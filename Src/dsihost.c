@@ -142,7 +142,7 @@ void HAL_DSI_MspInit(DSI_HandleTypeDef* dsiHandle)
     __HAL_RCC_DSI_CLK_ENABLE();
 
     /* DSI interrupt Init */
-    HAL_NVIC_SetPriority(DSI_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(DSI_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(DSI_IRQn);
   /* USER CODE BEGIN DSI_MspInit 1 */
 
