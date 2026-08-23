@@ -112,7 +112,7 @@ void StartDefaultTask(void *argument)
   while (1)
   {
     lv_timer_handler();
-    HAL_Delay(2);
+    osDelay(2);
   }
   /* USER CODE END defaultTask */
 }
