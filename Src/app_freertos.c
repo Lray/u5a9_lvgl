@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "main.h"
+#include "lvgl.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -104,10 +105,14 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN defaultTask */
+  lv_init();
+  lv_tick_set_cb(HAL_GetTick);
+
   /* Infinite loop */
-  for(;;)
+  while (1)
   {
-    osDelay(1);
+    lv_timer_handler();
+    HAL_Delay(2);
   }
   /* USER CODE END defaultTask */
 }
