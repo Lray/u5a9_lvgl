@@ -58,6 +58,28 @@ const osThreadAttr_t defaultTask_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
+/* USER CODE BEGIN 5 */
+void vApplicationMallocFailedHook(void)
+{
+  __disable_irq();
+  for (;;)
+  {
+  }
+}
+/* USER CODE END 5 */
+
+/* USER CODE BEGIN 4 */
+void vApplicationStackOverflowHook(xTaskHandle xTask, char *pcTaskName)
+{
+  (void)xTask;
+  (void)pcTaskName;
+  __disable_irq();
+  for (;;)
+  {
+  }
+}
+/* USER CODE END 4 */
+
 /**
   * @brief  FreeRTOS initialization
   * @param  None
@@ -106,7 +128,7 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN defaultTask */
   lv_init();
-  lv_tick_set_cb(HAL_GetTick);
+  lv_tick_set_cb(xTaskGetTickCount);
 
   /* Infinite loop */
   while (1)

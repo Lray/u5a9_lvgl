@@ -58,7 +58,8 @@ extern osThreadId_t defaultTaskHandle;
 
 /* Exported function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-
+void vApplicationMallocFailedHook(void);
+void vApplicationStackOverflowHook(xTaskHandle xTask, char *pcTaskName);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
