@@ -1,6 +1,6 @@
 # STM32U5A9J-DK 高性能 LVGL 9.x 图形底层平台技术计划
 
-> 状态：执行 v0.6；M0 已于 2026-08-23 完成并通过，M1 尚未开始。M0 证据见 [01_bringup_log.md](01_bringup_log.md)。  
+> 状态：执行 v0.7；M0 已于 2026-08-23 完成并通过（含追加的 LVGL 集成与 FreeRTOS OS 层启用），M1 尚未开始。M0 证据见 [01_bringup_log.md](01_bringup_log.md)。  
 > 日期：2026-08-23。  
 > 本文定义底层渲染平台、可观测性和合成基准；不包含业务 UI、仪表外观或通信协议栈。M0 已建立无显示的构建/RTOS/硬件基线，未把 Riverdi 的 LCD 参数移植到目标板。
 
@@ -17,8 +17,8 @@
 | `stm32u5x9j-dk-bsp/stm32u5x9j_discovery_hspi.c/.h`、`..._ospi.c/.h`、`..._ts.c/.h` | 目标 BSP 实际提供 APS512XX HSPI PSRAM、MX25UM51245G OSPI NOR、Sitronix 触摸 API |
 | `STM32CubeU5/Projects/STM32U5x9J-DK/Examples/DSI/DSI_VideoMode_SingleBuffer/` | 已验证 DSI video mode 的时钟树、管脚和启动顺序；当前 `main.c/.ioc` 实际未初始化 GFXMMU，因此只作为 DSI/LTDC/时钟基线 |
 | `lv_port_riverdi_stm32u5/Core/Src/gpu2d.c`、`dma2d.c`、`icache.c`、`dcache.c`、`lvgl_port_display.c`、`app_freertos.c` | `HAL_GPU2D_Init()`、`HAL_DMA2D_Init()`、Cache 和双缓冲接入风格；LCD 时序、LTDC 管脚和 framebuffer 地址不复用 |
-| `lv_port_riverdi_stm32u5/Middlewares/Third_Party/LVGL/lvgl/` 的 `v9.3.0` 标签 | NeoChrom/DMA2D draw unit、NemaGFX STM32 HAL、ST LTDC direct driver、LVGL profiler tag、direct 双缓冲同步复制和 stride API 的真实实现；不能以当前 9.6.0-dev 工作树行为替代 v9.3 结论 |
-| `lv_port_riverdi_stm32u5/Middlewares/Third_Party/FreeRTOS/Source/` | 本地已验证 FreeRTOS Kernel V10.4.6、GCC `ARM_CM33_NTZ/non_secure` port 和 `heap_4` 来源 |
+| 本工程 `Middlewares/Third_Party/LVGL/`（按官方指南 vendor 的 v9.3.0 发布树）及 [LVGL 官方 STM32 HAL 集成指南](https://docs.lvgl.io/master/integration/chip_vendors/stm32/add_lvgl_to_your_stm32_project.html)、[Integration Overview](https://docs.lvgl.io/master/integration/overview.html) | 接入方式（复制发布源码、`LV_BUILD_CONF_PATH` 指向 `config/lv_conf.h`、tick/display 初始化）、NeoChrom/DMA2D draw unit、ST LTDC direct driver、profiler tag、direct 双缓冲同步复制和 stride API 的真实实现；Riverdi 克隆仅作只读参考 |
+| 本工程 `Middlewares/Third_Party/FreeRTOS/Source/`（CubeMX X-CUBE-FREERTOS 1.3.1 生成） | FreeRTOS Kernel **V10.6.2**、GCC `ARM_CM33_NTZ/non_secure` port、`CMSIS_RTOS_V2` wrapper、`heap_4`；SVC/PendSV 来自 `portasm.c`、SysTick 来自 `port.c`（经 FreeRTOSConfig 的 `#define SysTick_Handler xPortSysTickHandler` 映射） |
 
 官方在线依据：[RM0456](https://www.st.com/resource/en/reference_manual/rm0456-stm32u5-series-armbased-32bit-mcus-stmicroelectronics.pdf)、[UM2967](https://www.st.com/resource/en/user_manual/um2967-discovery-kits-with-stm32u5x9nj-mcus-stmicroelectronics.pdf)。实现时以仓库锁定版本中的头文件原型为准，本文不虚构 HAL/BSP/NemaGFX 调用。
 
@@ -26,18 +26,18 @@
 
 | 冲突 | 代码/文档证据 | 规划处理 |
 |---|---|---|
-| “LVGL 锁定 v9.2”与硬件加速目标冲突 | 当前磁盘工作树是 commit `40fb6ba26`（版本头为 `9.6.0-dev`），三个目录都存在。这里的版本差异结论来自对同一 Git 仓库 **`v9.2.2` 标签快照**执行 `git ls-tree`/`git grep`：该标签不含 `src/draw/nema_gfx`、`src/draw/dma2d`、`src/drivers/display/st_ltdc` 和 `lv_display_set_buffers_with_stride()`；`v9.3.0` 标签包含它们 | **已解决：用户确认目标工程锁定 `v9.3.0`，本地标签解引用后的 commit 为 `c033a98afddd65aaafeebea625382a94020fe4a7`。** M0 从该标签创建独立工作树并复核 commit/hash；不把当前 9.6.0-dev 工作树误当作 v9.2.2，也不规划 v9.2 回移 |
+| “LVGL 锁定 v9.2”与硬件加速目标冲突 | 当前磁盘工作树是 commit `40fb6ba26`（版本头为 `9.6.0-dev`），三个目录都存在。这里的版本差异结论来自对同一 Git 仓库 **`v9.2.2` 标签快照**执行 `git ls-tree`/`git grep`：该标签不含 `src/draw/nema_gfx`、`src/draw/dma2d`、`src/drivers/display/st_ltdc` 和 `lv_display_set_buffers_with_stride()`；`v9.3.0` 标签包含它们 | **已解决：用户确认目标工程锁定 `v9.3.0`，本地标签解引用后的 commit 为 `c033a98afddd65aaafeebea625382a94020fe4a7`。** 已按官方指南把 v9.3.0 发布树 vendor 进 `Middlewares/Third_Party/LVGL/`，`lv_version.h` 校验为 9.3.0；不把当前 9.6.0-dev 工作树误当作 v9.2.2，也不规划 v9.2 回移 |
 | 既定 RGB565 与 BSP LUT 冲突 | 目标 BSP 的 LUT 名称和 LTDC 配置均为 ARGB8888；其物理缓冲为 184320×4 B = 720 KiB | M2 先复现 BSP ARGB8888 GFXMMU，再生成并验证 RGB565 LUT；RGB565 物理大小在 LUT 验证前标记为暂定 |
 | RGB565 framebuffer 与 DSI 线上格式被混为一谈 | BSP 是 ARGB8888 layer → LTDC PFC/24-bit RGB bus → DSI RGB888，并非 32-bit 数据原样上 DSI；RM0456 §43.2/§43.4.2 明确允许 LTDC layer 输入 RGB565并扩展为内部 8-bit RGB，§44.4.4/§44.5 允许 DSI Wrapper 选择 16/18/24-bit color coding | M2-A 先验证 RGB565 framebuffer → DSI RGB888；M2-B 再独立验证 DSI RGB565，避免同时改变 LUT、LTDC layer、DSI packet 与 panel 接收格式 |
 | 任务中的 PSRAM/触摸器件与板卡资料冲突 | UM2967 Rev.5 与本地 BSP 均指向 512-Mbit APS512XX、HSPI1、映射基址 `0xA0000000`，触摸 BSP 指向 Sitronix；不是 APS256XX/GT911 | **已解决：STM32U5A9J-DK 与本地 `stm32u5x9j-dk-bsp` 均按 APS512XX + Sitronix 规划。** 原任务描述中的 APS256XX/GT911 作废 |
 | 用户描述称 DSI 示例带 GFXMMU，但本地示例代码没有 | 已检查 `.ioc` 和 `main.c`；示例使用单个完整 ARGB8888 buffer | M1 仅借用它验证 DSI/时钟；GFXMMU 以目标 BSP 为来源，禁止把示例描述当成已经执行的代码 |
 | “BSP 默认约 60 Hz”与本地时钟/时序不符 | 本地 BSP/.ioc 为 HSE=16 MHz、PLL3M/N/R=4/125/24，LTDC clock=20.833333 MHz；水平总周期 480+2+1+1=484，垂直总周期 481+1+12+50=544，名义帧率为 20.833333 MHz/(484×544)=**79.125 Hz** | **按用户决策保留 BSP 默认时钟与时序，但基准标称值修正为约 79.1 Hz。** M1 用 60 s line-event 计数和 DWT frame-period 实测；若实测不符，先回写时钟事实再进入 M2 |
 | 当前工程 HAL 与 Cube 主仓版本不同，且 Cube 主仓的 driver/component 子模块目录为空 | 原 HAL 为 `V1.6.2`；CMSIS Device、`aps512xx` 等需补齐实体来源 | **已解决：M0 保留工程原 HAL `V1.6.2`，不与 Cube 主仓对齐；CMSIS Device 与 BSP 组件按来源锁定，组件仅保留驱动源码、配置模板和许可证。** |
-| “CubeMX 生成 FreeRTOS”与现机资产不符 | 本地 CubeU5/CubeMX U5 package 以 ThreadX 为主；当前可追溯 FreeRTOS 源是 Riverdi 参考工程的 Kernel V10.4.6 | **已解决：目标工程锁定 FreeRTOS Kernel V10.4.6，使用 GCC `ARM_CM33_NTZ/non_secure` port、原生 API、`heap_4`；M0 记录完整来源和文件树 hash，不把它写成 CubeMX 生成物** |
-| v9.3 `LV_OS_NONE` Nema 提交缺结束等待 | `lv_draw_wait_for_finish()` 在 v9.3 的 no-OS 配置下不遍历 draw unit；上游 commit `ff620cafc41737ed55de390abeb1fa79cb024f63` 后来为 `nema_gfx_execute_drawing()` 增加 `nema_cl_wait()` | **已解决：携带一个独立、可审查的上游回移 patch；safe profile 每个 Nema task 同步完成后才 READY。除此之外不改 LVGL 子模块** |
+| “CubeMX 生成 FreeRTOS”与现机资产不符 | 本地 CubeU5/CubeMX U5 package 以 ThreadX 为主；早期计划因此考虑 Riverdi V10.4.6 手工移植 | **已解决（2026-08-23 修订）：实际采用 CubeMX X-CUBE-FREERTOS 1.3.1 标准集成——Kernel V10.6.2、CMSIS-RTOS2 wrapper、`heap_4`、GCC `ARM_CM33_NTZ/non_secure` port；Riverdi V10.4.6 手工移植方案作废。CMake `RTOS2` 库、include 路径与 handler 所有权由 CubeMX 生成并经 nm/map 审计** |
+| v9.3 `LV_OS_NONE` Nema 提交缺结束等待 | `lv_draw_wait_for_finish()` 在 v9.3 的 no-OS 配置下不遍历 draw unit；上游 commit `ff620cafc41737ed55de390abeb1fa79cb024f63` 后来为 `nema_gfx_execute_drawing()` 增加 `nema_cl_wait()` | **已解决（2026-08-23 修订，替代原补丁方案）：工程改用 `LV_USE_OS=LV_OS_FREERTOS`，`lv_draw_wait_for_finish()` 及各单元 `wait_for_finish_cb` 恢复生效，Nema 提交后由官方 OS 层同步等待；不携带任何 LVGL 补丁** |
 | stock LVGL DMA2D 与 HAL port 所有权冲突，且 polling unit 仍可能和独立任务重叠 | v9.3 stock driver直接操作 RCC/DMA2D 寄存器，不使用 `HAL_DMA2D_Init()`；M33 上也没有其 Cortex-M7 cache hook | **已解决：正式配置关闭 stock `LV_USE_DRAW_DMA2D`，由项目实现唯一 owner 的同步 U5 HAL DMA2D draw unit；任务完成/错误检查后才标 READY，因此与同步 Nema/SW 严格串行** |
 | stock ST LTDC direct driver 与 GFXMMU stride 不兼容 | v9.3 driver把 LTDC `ImageWidth` 同时当作 LVGL 逻辑宽，并调用无 stride 参数的 `lv_display_set_buffers()` | **已解决：`LV_USE_ST_LTDC=0`；项目 display port 固定逻辑 480×480、LTDC `ImageWidth=1536`、stride 3072 B 和虚拟跨度 1,474,560 B** |
-| 手工接入FreeRTOS与Cube异常处理/HAL tick冲突 | CM33_NTZ port自身强定义`SVC_Handler`、`PendSV_Handler`、`SysTick_Handler`，目标DSI示例`stm32u5xx_it.c`也定义同名函数；port的SysTick不调用`HAL_IncTick()` | **已解决：三个exception handler只由FreeRTOS port拥有，Cube生成文件不得再定义；HAL tick迁到本地Riverdi已采用的TIM2独立timebase，symbol/map与上板双时基测试作为M0硬闸门** |
+| 手工接入FreeRTOS与Cube异常处理/HAL tick冲突 | CM33_NTZ port自身强定义`SVC_Handler`、`PendSV_Handler`、`SysTick_Handler`，Cube生成文件若重复定义会链接冲突；port的SysTick不调用`HAL_IncTick()` | **已实现并验证：CubeMX 集成下 `stm32u5xx_it.c` 不含三 handler，nm 证实 SVC/PendSV←portasm.c、SysTick←port.c 各恰一个强定义；HAL tick 为 TIM2 独立 timebase（`stm32u5xx_hal_timebase_tim.c` + 唯一 `TIM2_IRQHandler`）** |
 | FreeRTOS CM33 port配置与hard-float/项目MPU不明确 | `portmacro.h`要求显式定义FPU/MPU/TrustZone开关；runtime stats还要求两个port宏 | **已解决：`configENABLE_FPU=1`、`configENABLE_MPU=0`（只关闭FreeRTOS per-task MPU wrapper，项目静态MPU仍启用）、`configENABLE_TRUSTZONE=0`、`configRUN_FREERTOS_SECURE_ONLY=0`；DWT 64-bit扩展函数提供runtime stats两个port宏** |
 | v9.3 direct同步复制无公开bytes hook | `refr_sync_areas()`是static，`lv_draw_buf_copy()` profiler scope不暴露area字节数 | **已解决：不增加第二个LVGL patch；精确报告`sync_copy_calls/time`，`sync_copy_est_bytes`只按dirty/flush几何推算并明确为估算，不作为正确性门限** |
 
@@ -56,8 +56,8 @@ LVGL 版本、FreeRTOS 来源、官方板卡 BOM 和 safe profile 的加速器�
 | 性能输出 | ST-LINK VCP，921600 baud，每秒一行 CSV；DWT、FreeRTOS runtime stats、LVGL profiler 三方交叉核对 | 2026-08-23 |
 | 性能 GPIO | `perf_gpio` 仅保留为可选编译模块；无示波器/逻辑分析仪，不参与任何里程碑验收 | 2026-08-23 |
 | 加速器并发 | NeoChrom/DMA2D 串行路由为正式配置；受控并发只保留为 M5 实验，不因单项数据改善自动转正 | 2026-08-23 |
-| FreeRTOS | 锁定 Kernel V10.4.6；GCC `ARM_CM33_NTZ/non_secure` port、原生 API、`heap_4`、application-allocated heap | 2026-08-23 |
-| Nema no-OS 修复 | 允许以独立 patch 回移上游 commit `ff620cafc41737ed55de390abeb1fa79cb024f63` 的 4 行同步等待修复；禁止混入其他 LVGL 改动 | 2026-08-23 |
+| FreeRTOS | CubeMX X-CUBE-FREERTOS 1.3.1：Kernel **V10.6.2**、CMSIS-RTOS2 wrapper、`heap_4`（当前 64 KiB，正式分区后 128 KiB 专用 section）、`configENABLE_FPU=1`、栈溢出检查=2、malloc-failed hook=1 | 2026-08-23 |
+| LVGL OS 层 | `LV_USE_OS=LV_OS_FREERTOS`（官方 RTOS 路径）：`wait_for_finish_cb` 生效使 Nema/DMA2D 完成等待由官方机制保证，替代已作废的 no-OS wait 补丁；tick 用 `lv_tick_set_cb(xTaskGetTickCount)`；所有 LVGL API 仍集中单一 task | 2026-08-23 |
 | DMA2D owner | safe profile 关闭 stock LVGL DMA2D，使用项目自有、同步、HAL-owned 的 U5 DMA2D draw unit；正式路由全局严格串行 | 2026-08-23 |
 | LTDC display port | 关闭 stock `LV_USE_ST_LTDC`；使用项目自有 stride-aware direct port | 2026-08-23 |
 | DCACHE2 | safe profile 不初始化/不启用 DCACHE2，并清除、读回 `SYSCFG_CFGR1.SRAMCACHED`；DCACHE2 perf 实验在缺少维护闭环时取消 | 2026-08-23 |
@@ -97,7 +97,7 @@ flowchart LR
     A[FreeRTOS: 独立 LVGL task] --> B[LVGL refresh / draw task graph]
     B --> C{draw unit evaluate}
     C -->|简单 fill / 无变换 blit / PFC| D[项目 U5 HAL DMA2D draw unit\n同步完成]
-    C -->|图片 rotate / scale / 支持的 blend / NemaVG primitive| E[NeoChrom NemaGFX draw unit\nno-OS wait patch]
+    C -->|图片 rotate / scale / 支持的 blend / NemaVG primitive| E[NeoChrom NemaGFX draw unit\nOS层wait_for_finish]
     C -->|不支持的 primitive| F[LVGL software draw unit]
 
     N[OSPI NOR 0x90000000\n只读图片/字体] --> D
@@ -135,8 +135,8 @@ flowchart LR
 
 1. 启动时先清两块 buffer，并故意反向注册初始所有权：例如 LTDC 初始 front 指向 virtual buffer 1，LVGL `buf1` 指向 virtual buffer 0；禁止 LTDC 与 LVGL 同时从 buffer 0 起步。
 2. LTDC 只读 front virtual buffer；LVGL 只向 back virtual buffer 创建 draw task。draw unit 按能力确定性路由：项目 DMA2D 单元承接简单 fill、无旋转图片 blit 和格式转换；NeoChrom承接图片旋转缩放、受支持 blend/NemaVG primitive；其余回退软件单元，不承诺 v9.3 未实现的任意 matrix/vector/path。
-3. `GRAPHICS_SAFE` 采用全局严格串行：单一 LVGL 调用者；项目 DMA2D dispatch 阻塞到完成并检查错误后才 READY；Nema 使用上游 no-OS wait 回移，同样完成后才 READY；SW 本身同步。任一时刻最多一个绘制单元执行，不能只依赖“区域不相交”。
-4. 最后一块dirty area完成后断言DMA2D idle、Nema task已同步完成，再提交换帧。direct render的**flush callback**不做全帧copy，只做完成确认和地址切换；但v9.3 `refr_sync_areas()`会经`lv_draw_buf_copy()`把上一帧未重绘区域逐行CPU `lv_memcpy`到另一buffer。无需第二个LVGL patch即可由profiler精确统计`sync_copy_calls/time`；`sync_copy_est_bytes`仅按dirty/flush几何镜像推算并显式标`est`，不能写成精确值。全屏重绘通常消除该同步区，局部dirty则不能宣称zero-copy。
+3. `GRAPHICS_SAFE` 采用严格串行：单一 LVGL 调用者；项目 DMA2D dispatch 在调用线程阻塞到完成并检查错误后才 READY；SW 同步执行；Nema 提交后由 OS 层 `wait_for_finish_cb`（内部 `nema_cl_wait()`）等待完成。刷新流程在 flush 前对全部单元执行 `lv_draw_wait_for_finish()`，保证换帧时无未完成写入；跨单元的帧内重叠仍按 M4 CRC/容差门控验证，不能只依赖“区域不相交”。
+4. 最后一块dirty area完成后断言DMA2D idle、Nema/SW 已由 OS 层等待完成，再提交换帧。direct render的**flush callback**不做全帧copy，只做完成确认和地址切换；v9.3 `refr_sync_areas()`会经`lv_draw_buf_copy()`把上一帧未重绘区域逐行CPU `lv_memcpy`到另一buffer。由profiler精确统计`sync_copy_calls/time`；`sync_copy_est_bytes`仅按dirty/flush几何镜像推算并显式标`est`，不能写成精确值。全屏重绘通常消除该同步区，局部dirty则不能宣称zero-copy。
 5. 换帧状态机最多允许一个 pending reload：fence → 确认 `swap_pending=false` → `HAL_LTDC_SetAddress_NoReload(back)` → `HAL_LTDC_Reload(...VERTICAL_BLANKING)`；仅在 reload-event callback 中更新 front/back、清 pending 并释放旧 front。line-event callback 每帧重新 arm，只负责 DWT frame tick，不能用 reload 次数代替刷新率。
 6. M5 才允许受控并发实验，且需要单独实现能够真正仲裁两个 draw unit 的实验版本；不能仅切换配置名就声称并发或串行。若 FPS/P95 没有净收益，或出现 LTDC FIFO underrun/GFXMMU transfer error，正式交付仍保留严格串行。
 
@@ -144,10 +144,10 @@ flowchart LR
 
 | 配置 | 用途 | 关键策略 |
 |---|---|---|
-| `GRAPHICS_SAFE`（默认交付） | 可复现、无撕裂、便于定位 | FreeRTOS 运行，但 LVGL 只由独立任务调用；`LV_USE_OS=LV_OS_NONE`；Nema wait backport + 项目同步 HAL DMA2D 单元，严格串行；DCACHE2 off；PSRAM non-cacheable |
+| `GRAPHICS_SAFE`（默认交付） | 可复现、无撕裂、便于定位 | FreeRTOS + `LV_USE_OS=LV_OS_FREERTOS`；LVGL 只由独立任务调用；kernel heap 64 KiB 过渡（正式分区 128 KiB 专用 section）+ 栈溢出/malloc-failed hook；项目同步 HAL DMA2D 单元 + 官方 wait_for_finish 严格串行；DCACHE2 off；PSRAM non-cacheable |
 | `GRAPHICS_PERF_EXPERIMENT` | M5 对比实验 | 先分别测 PSRAM write-back + 显式维护、XRGB等单变量；GFXMMU cache/prefetch与DCACHE2仍保持off；多draw thread/硬件并发只有在另行完成仲裁设计后才出现，始终保留帧末fence |
 
-这不违背“必须使用 FreeRTOS”：两种配置都运行 FreeRTOS 且 LVGL 有独立任务；`LV_USE_OS=LV_OS_NONE` 只表示基线阶段不让 LVGL 内部创建额外渲染线程。所有 LVGL API 调用集中在 LVGL task，其他任务通过队列投递消息。
+两种配置都运行 FreeRTOS 且 LVGL 有独立任务。`LV_USE_OS=LV_OS_FREERTOS` 后 LVGL 内部锁/等待原语生效，渲染单元线程与 `wait_for_finish_cb` 由 OS 层管理；应用侧仍保持“所有 LVGL API 集中在单一 task，其他任务经队列投递”的模型，跨任务访问必须经 `lv_lock()/lv_unlock()`。
 
 ## 3. 目标目录结构与模块划分
 
@@ -160,24 +160,24 @@ flowchart LR
 ├── .vscode/
 │   └── settings.json                # 扩展/终端工具路径，不存机器秘密
 ├── cmake/
-│   ├── arm-none-eabi-gcc.cmake
-│   ├── stm32cubemx/                 # CubeMX 生成的 CMake glue
-│   ├── check_toolchain.cmake         # bare 命令的 generator/compiler 版本闸门
-│   └── check_map.cmake              # section/容量断言与 map 检查
-├── STM32U5A9NJH6Q.ioc               # 从目标 DSI 示例导入后改造
-├── Core/
-│   ├── Inc/                         # CubeMX 生成 + USER CODE 声明
-│   └── Src/                         # main、IRQ、时钟、外设 init、TIM2 HAL timebase
-├── Drivers/                         # 锁定的 Cube HAL/CMSIS
+│   ├── gcc-arm-none-eabi.cmake        # CubeMX 生成的 GCC 工具链文件（实际文件名）
+│   ├── stm32cubemx/                   # CubeMX 生成的 CMake glue（含 RTOS2 OBJECT 库）
+│   ├── check_toolchain.cmake          # [待建] bare 命令的 generator/compiler 版本闸门
+│   └── check_map.cmake                # [待建] section/容量断言与 map 检查
+├── u5a9_lvgl.ioc                      # CubeMX 工程（FreeRTOS/FPU 等经 ioc 配置）
+├── startup_stm32u5a9xx.s              # 启动文件（CubeMX 生成于根目录）
+├── Inc/                               # CubeMX 生成头文件 + FreeRTOSConfig.h（平铺结构）
+├── Src/                               # main、IRQ、外设 init、TIM2 HAL timebase、app_freertos.c
+├── Drivers/                           # 锁定的 Cube HAL V1.6.2/CMSIS（已裁剪未用型号）
 ├── Middlewares/
-│   ├── Third_Party/FreeRTOS/
-│   └── Third_Party/LVGL/            # 独立子模块，禁止直接改源码
+│   ├── Third_Party/FreeRTOS/          # X-CUBE-FREERTOS 1.3.1：Kernel V10.6.2 + CMSIS-RTOS2 wrapper
+│   └── Third_Party/LVGL/              # vendor 的 v9.3.0 官方发布树，禁止修改；CMake 经 os_desktop.cmake 接入
 ├── BSP/
-│   └── STM32U5x9J-DK/               # 目标板 BSP + component 依赖
+│   └── STM32U5x9J-DK/                 # 目标板 BSP + Components(aps512xx/mx25um51245g/sitronix)
 ├── config/
-│   ├── lv_conf.h
-│   ├── FreeRTOSConfig.h
-│   └── board_conf.h
+│   ├── lv_conf.h                      # 已建：LV_COLOR_DEPTH=16、LV_OS_FREERTOS
+│   └── board_conf.h                   # [待建]
+├── STM32U5A9xx_FLASH.ld               # 当前为合并 RAM+SRAM4 过渡布局，正式分区见 §6.4
 ├── platform/
 │   ├── display/
 │   │   ├── board_lcd.c/.h           # DSI/LTDC/GFXMMU 组合与错误状态
@@ -215,14 +215,12 @@ flowchart LR
 │   ├── bench_text_scroll.c
 │   └── assets/                       # 可重复、版本化的合成资源
 ├── linker/
-│   ├── STM32U5A9NJHXQ_FLASH.ld
-│   └── STM32U5A9NJHXQ_DIAG_ARGB.ld  # M1专用，绝不与正式布局同时使用
+│   ├── STM32U5A9NJHXQ_FLASH.ld        # [待建] 正式 SRAM1/2/3/5 分区布局
+│   └── STM32U5A9NJHXQ_DIAG_ARGB.ld    # [待建] M1专用，绝不与正式布局同时使用
 ├── tools/
 │   ├── generate_gfxmmu_lut.py
 │   ├── validate_gfxmmu_lut.py
 │   └── capture_vcp_csv.py
-├── patches/lvgl/
-│   └── 0001-nema-wait-no-os.patch    # 仅回移上游 ff620cafc；hash/适用tag受检
 └── docs/
     ├── 00_plan.md
     ├── 01_bringup_log.md
@@ -354,7 +352,7 @@ GFXMMU 还有独立的 3-line、16-byte-line data cache。RM0456 §21.4.3 明确
 | NemaVG arc/triangle/label 等 primitive | NemaGFX，能力不足则 SW | 是否开启及结果容差由 M4逐项门控；通用 vector/path 不在未验证能力表内 |
 | framebuffer swap | display port | flush callback 不做全帧 DMA2D copy；frame fence 后提交单一 pending VBlank reload；LVGL core 的局部 sync copy 单列统计 |
 
-第一版不追求 NemaGFX 和 DMA2D 同时跑满。M4 的 `BOTH_SERIAL` 不是名称约定，而由“项目 DMA2D 同步 dispatch + Nema no-OS wait backport + 单一 LVGL caller”实现全局严格串行。M5 先比较 SW only、DMA2D only、Nema only、两者串行；受控并发只有在另行实现共享 arbiter、dependency/fence 和错误注入后才加入矩阵，不能直接启用 stock async unit。只有平均值、P95、worst、CRC/误差和错误计数都不退化时，才把它保留为实验 profile；正式交付仍是串行。
+第一版不追求 NemaGFX 和 DMA2D 同时跑满。M4 的 `BOTH_SERIAL` 由“项目 DMA2D 同步 dispatch + OS 层 `wait_for_finish_cb` 等待 Nema/SW + 单一 LVGL caller + flush 前总 `lv_draw_wait_for_finish()`”共同实现，不再依赖任何补丁。M5 先比较 SW only、DMA2D only、Nema only、两者串行；受控并发只有在另行实现共享 arbiter、dependency/fence 和错误注入后才加入矩阵。只有平均值、P95、worst、CRC/误差和错误计数都不退化时，才把它保留为实验 profile；正式交付仍是串行。
 
 项目DMA2D draw unit有意依赖锁定v9.3的私有`src/draw/lv_draw_private.h`，因此它是版本耦合的适配层而不是稳定公共API。M4固定`PROJECT_DMA2D_UNIT_ID=5`（stock unit已禁用，且与SW=1、Nema=7不冲突），只对已支持task把`preference_score`降到20，从而优先于Nema的80；不支持的task不改score。`lv_draw_dma2d_u5_init()`必须在`lv_init()`之后、创建display和任何draw task之前注册，锁定头文件hash/结构offset并用路由单测防止版本漂移。同步完成调用本地HAL原型`HAL_DMA2D_PollForTransfer(..., 50 ms)`；timeout/error时执行`HAL_DMA2D_Abort()`和受控re-init，增加fatal/error counter并禁止swap该back buffer，绝不无限等待或在部分写入后假装SW fallback成功。
 
@@ -364,7 +362,7 @@ GFXMMU 还有独立的 3-line、16-byte-line data cache。RM0456 §21.4.3 明确
 - `LV_USE_PROFILER=1`、`LV_USE_PROFILER_BUILTIN=0`，把 `LV_PROFILER_INCLUDE/BEGIN/END/BEGIN_TAG/END_TAG` 映射到项目 backend。v9.3 draw unit name tag 用于统计 evaluate/dispatch/wait 的 **CPU scope**；dispatch tag 不等于异步硬件 busy，Nema/DMA2D 的执行时间在项目同步边界和完成点另行 DWT 打点。
 - DWT CYCCNT：160 MHz 下32-bit约26.84 s回绕；项目provider以无符号模差累计到64-bit。分别统计refresh、draw dispatch、Nema/DMA hardware busy、wait/fence、LVGL `refr_sync_areas`/`lv_draw_buf_copy` calls/time与`sync_copy_est_bytes`、flush/swap request、line-event frame tick、reload-event swap done。带`est`字段不参与精确流量或正确性断言。
 - 每类指标维护 count/sum/max 和固定桶直方图，输出平均、P50、P95、P99、最差；不在渲染热路径排序大数组。
-- FreeRTOS runtime stats锁定§6.2的DWT 32→64-bit provider、`configRUN_TIME_COUNTER_TYPE=uint64_t`和两个port宏；60 s/2 h窗口直接使用64-bit值。`LV_OS_NONE`的默认`lv_os_get_idle_percent()`只是LVGL timer idle，不能冒充整机CPU%；通过`LV_SYSMON_GET_IDLE`接项目FreeRTOS idle/runtime统计，并在CSV明确字段语义。
+- FreeRTOS runtime stats：`configGENERATE_RUN_TIME_STATS`、`configRUN_TIME_COUNTER_TYPE=uint64_t` 和两个 port 宏**尚未配置**（当前 `RUN_TIME_COUNTER_TYPE=size_t`=32-bit），属 M0 收口/M3 前待办；启用后 60 s/2 h 窗口直接使用64-bit值。`LV_SYSMON_GET_IDLE` 必须接项目 FreeRTOS idle/runtime 统计，不能把 LVGL timer idle 冒充整机 CPU%，并在 CSV 明确字段语义。
 - `perf_gpio` 保留为默认关闭的可选编译模块，可在未来有示波器/逻辑分析仪时包围整帧 render 或翻转 VBlank；它不占用默认 GPIO，也不参与编译以外的里程碑验收。
 - UART CSV固定使用目标BSP的COM1，即`USART1`、PA9 TX/PA10 RX、AF7，经板载ST-LINK VCP以921600 baud每秒汇总一次；字段至少包含：build id、场景、模式、色深、line frame count、rendered frame count、FPS、render mean/P95/max、`sync_copy_calls/time/est_bytes`、swap request/done mean/P95/max、Nema/DMA2D/SW CPU scope与hardware time、FreeRTOS CPU%、LTDC underrun、GFXMMU/DSI/GPU/DMA error、heap/pool high-water/failure。
 - 严禁在每个 draw task 中 `printf`；热路径只写 16 KiB trace ring，低优先级 telemetry task 批量输出。
@@ -392,13 +390,14 @@ GFXMMU 还有独立的 3-line、16-byte-line data cache。RM0456 §21.4.3 明确
 | `LV_MEM_SIZE` | 256 KiB | 对应 SRAM3 专用 window；用高水位数据再缩放 |
 | `LV_DRAW_BUF_ALIGN`、stride align | 至少 16 B；cacheable 外存操作按 32 B 维护 | 满足 GFXMMU block、DMA/Nema 和 D-cache line 约束 |
 | display stride | 显式 3072 B | GFXMMU 192-block virtual line；不能沿用 480×2 |
-| `LV_USE_NEMA_GFX` | M4 启用 | v9.3 的真实宏名；预编译库 ABI 与 no-OS wait patch 验证后开启 |
+| `LV_USE_NEMA_GFX` | M4 启用 | v9.3 的真实宏名；预编译库 ABI 验证后开启，完成等待由 OS 层 `wait_for_finish_cb` 兜底 |
 | `LV_USE_NEMA_HAL`、`LV_NEMA_STM32_HAL_INCLUDE` | `LV_NEMA_HAL_STM32`、目标 `stm32u5xx_hal.h` | 使用 v9.3 真实 STM32 HAL选择宏，不沿用其他系列 include |
 | `LV_USE_NEMA_VG`、`LV_NEMA_GFX_MAX_RESX/Y` | 1、480/480 | pool公式和vector/mask能力的来源 |
 | `LV_USE_DRAW_DMA2D` | 0 | 关闭 stock直接寄存器 driver，防止与项目 HAL owner/IRQ 重复；项目自有 U5 draw unit仍提供DMA2D路由 |
 | 项目 DMA2D async/IRQ | 0 起步 | safe profile同步 polling完成并检查ISR错误；M5实验另行门控 |
 | `LV_USE_ST_LTDC` | 0 | stock direct driver不能同时表示visible 480和stride 3072；项目自有display port |
-| `LV_USE_OS` | safe profile 为 `LV_OS_NONE` | FreeRTOS 中只有一个 LVGL task 调 API，避免第一阶段多 draw thread 并发 |
+| `LV_USE_OS` | `LV_OS_FREERTOS`（2026-08-23 起锁定） | 官方 RTOS 路径：OS 层锁原语与 `wait_for_finish_cb` 生效；应用模型仍为单一 LVGL task，跨任务访问经 `lv_lock()/lv_unlock()` |
+| tick 来源 | `lv_tick_set_cb(xTaskGetTickCount)` | 与调度器同源 1-ms；官方 FreeRTOS 推荐写法；主循环为 `lv_timer_handler()+osDelay(2)`（官方裸机循环的 RTOS 等价） |
 | `LV_USE_PERF_MONITOR`、`LV_USE_SYSMON`、`LV_USE_PROFILER` | 1 | 性能可观测性是平台功能；benchmark报告说明monitor-on/off扰动 |
 | `LV_USE_PROFILER_BUILTIN` | 0 | 使用项目16-KiB ring和DWT backend，不让built-in buffer位置/输出方式失控 |
 | `LV_SYSMON_GET_IDLE` | 项目FreeRTOS idle/runtime provider | 避免把LVGL timer idle误报为整机CPU idle |
@@ -413,12 +412,12 @@ GFXMMU 还有独立的 3-line、16-byte-line data cache。RM0456 §21.4.3 明确
 | `configENABLE_MPU` | 0 | 只关闭FreeRTOS per-task MPU wrapper，避免port在context switch改写项目8-region静态MPU；不表示CPU MPU关闭 |
 | `configENABLE_TRUSTZONE`、`configRUN_FREERTOS_SECURE_ONLY` | 0、0 | 对应已确认TrustZone disabled/non-secure baseline |
 | `configTICK_RATE_HZ`、`configUSE_TICKLESS_IDLE` | 1000 Hz、0 | 1-ms任务时基；基准阶段不引入tickless抖动 |
-| `configAPPLICATION_ALLOCATED_HEAP` | 1 | `heap_4`的`ucHeap`放专用`.freertos_heap` section |
-| `configCHECK_FOR_STACK_OVERFLOW`、`configUSE_MALLOC_FAILED_HOOK` | 2、1 | 任务栈双向检查和allocation failure闭环 |
-| `configGENERATE_RUN_TIME_STATS`、`configUSE_TRACE_FACILITY` | 1、1 | 提供整机CPU/idle和每任务runtime统计 |
-| `configRUN_TIME_COUNTER_TYPE` | `uint64_t` | 2-h测试不接受32-bit DWT约26.84-s回绕污染累计 |
-| `portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()` | `perf_runtime_stats_init()` | 显式满足FreeRTOS V10.4.6编译契约并启动DWT扩展器 |
-| `portGET_RUN_TIME_COUNTER_VALUE()` | `perf_runtime_counter64()` | 每次读取以无符号32-bit模差累计到64-bit；provider有context-switch/telemetry并发保护 |
+| `configAPPLICATION_ALLOCATED_HEAP` | 目标 1（`ucHeap` 放专用 `.freertos_heap` section） | **待办**：当前为 0，随 §6.4 正式 linker 分区一并启用 |
+| `configCHECK_FOR_STACK_OVERFLOW`、`configUSE_MALLOC_FAILED_HOOK` | 2、1（**已配置**，hook 为关中断死循环的最小实现） | 任务栈双向检查和 allocation failure 闭环；后续里程碑把 hook 升级为计数+日志 |
+| `configGENERATE_RUN_TIME_STATS`、`configUSE_TRACE_FACILITY` | 1、1 | **待办**：当前 runtime stats 未启用；`configUSE_TRACE_FACILITY=1` 已配置 |
+| `configRUN_TIME_COUNTER_TYPE` | `uint64_t` | **待办**：当前为默认 `size_t`（32-bit），启用 runtime stats 时一并修改 |
+| `portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()` | `perf_runtime_stats_init()` | 启用 runtime stats 时实现；满足 Kernel V10.6.2 编译契约并启动 DWT 扩展器 |
+| `portGET_RUN_TIME_COUNTER_VALUE()` | `perf_runtime_counter64()` | 启用 runtime stats 时实现；每次读取以无符号32-bit模差累计到64-bit，provider 有并发保护 |
 
 exception ownership固定如下：`SVC_Handler`与`PendSV_Handler`只来自`ARM_CM33_NTZ/non_secure/portasm.c`，`SysTick_Handler`只来自同port的`port.c`；Cube生成的`stm32u5xx_it.c`不得定义三者。每次再生成后，CMake source检查、link map和`arm-none-eabi-nm`都要求每个symbol恰有一个strong definition且来源正确。
 
@@ -462,28 +461,31 @@ cmake -S . -B build && cmake --build build
 ### M0：版本/硬件闸门与可重复构建骨架
 
 > 执行状态：**已通过**。锁定构建、产物审计、Option Bytes 双重读回、TIM2/FreeRTOS 双时基、FPU S16-S31 上下文、64-bit runtime stats 和 10 分钟上板烧机均通过；完整数值见 [01_bringup_log.md](01_bringup_log.md)。
+> **2026-08-23 追加并通过**：CubeMX X-CUBE-FREERTOS（V10.6.2/CMSIS-RTOS2/64-KiB heap/双 hook/FPU=1）标准集成、LVGL v9.3.0 官方发布树集成（`config/lv_conf.h` + `LV_BUILD_CONF_PATH`）、`LV_USE_OS=LV_OS_FREERTOS` 与 `xTaskGetTickCount` tick；全量构建 0 警告，SVC/PendSV/SysTick 单一强定义经 nm 复核。runtime stats provider 与正式 linker 分区仍为 M0 收口待办。
 
 **目标**
 
-- 采用 §1.3 已确认决策和 §1.4 现机工具版本，锁定 LVGL `v9.3.0` commit、唯一 Nema backport hash、FreeRTOS V10.4.6 tree hash、工程原 HAL `V1.6.2` 基线、CMSIS/BSP 组件来源、Project Bundles 和实物板卡版本。
-- 从目标DSI `.ioc`创建STM32U5A9NJH6Q、TrustZone disabled、CMake + GCC工程；FreeRTOS不是CubeMX生成物，而是锁定的Kernel V10.4.6 + GCC CM33 non-secure port。按§6.2冻结FPU/MPU/TrustZone/runtime-stats宏、FreeRTOS唯一exception ownership和TIM2 HAL timebase；先运行heartbeat/FPU context smoke，不引入显示。
+- 采用 §1.3 已确认决策和 §1.4 现机工具版本：锁定 LVGL `v9.3.0` 发布树、工程原 HAL `V1.6.2` 基线、CMSIS/BSP 组件来源、Project Bundles 和实物板卡版本。
+- CubeMX 创建 STM32U5A9NJH6Q、TrustZone disabled、CMake + GCC 工程；FreeRTOS 经 X-CUBE-FREERTOS 标准生成（V10.6.2/CMSIS-RTOS2），按 §6.2 冻结 FPU/MPU/TrustZone 宏、exception ownership 与 TIM2 HAL timebase；heartbeat/FPU context smoke 不引入显示。
+- 按 LVGL 官方 STM32 HAL 指南完成 v9.3.0 vendor 集成：复制发布源码、`lv_conf.h`、`lv_init()`/tick/`lv_timer_handler()` 主循环。
 - 建立 bare CMake 命令的 bundle硬闸门、warning policy、link map、build id 和 VS Code/ST-LINK 调试闭环。
 - 在任何跨SRAM3的M1测试前，以CubeProgrammer/ST-LINK设置并在完整复位后读回：TZEN disabled、SRAM2 ECC disabled、SRAM3 ECC disabled；保存修改前后的option-byte dump。锁定HAL中`OB_SRAM2_ECC_DISABLE`/`OB_SRAM3_ECC_DISABLE`是对应raw bit置位的反直觉编码，比较必须使用锁定HAL语义和明确raw mask，不能按自然语言猜0/1。
 
 **预计改动文件**
 
-- `STM32U5A9NJH6Q.ioc`、`CMakeLists.txt`、`CMakePresets.json`、`.settings/bundles.store.json`、`.vscode/settings.json`、`cmake/*`
-- CubeMX生成的`Core/*`、`Drivers/*`，其中包括TIM2 `stm32u5xx_hal_timebase_tim.c`；`stm32u5xx_it.c`不得保留SVC/PendSV/SysTick定义；锁定来源复制/子模块化的`Middlewares/Third_Party/FreeRTOS/*`
-- `config/FreeRTOSConfig.h`、`platform/os/freertos_runtime_stats.*`、基础`linker/STM32U5A9NJHXQ_FLASH.ld`
-- `patches/lvgl/0001-nema-wait-no-os.patch`（只保存/校验，不在 M0 启用 Nema）、`docs/01_bringup_log.md`
+- `u5a9_lvgl.ioc`、`CMakeLists.txt`、`CMakePresets.json`、`cmake/*`
+- CubeMX生成的 `Inc/*`、`Src/*`、`Drivers/*`，其中包括TIM2 `stm32u5xx_hal_timebase_tim.c`；`stm32u5xx_it.c`不得保留SVC/PendSV/SysTick定义
+- `Middlewares/Third_Party/FreeRTOS/*`（X-CUBE-FREERTOS 生成）、`Middlewares/Third_Party/LVGL/*`（v9.3.0 vendor 树）、`config/lv_conf.h`
+- `Inc/FreeRTOSConfig.h`、`Src/app_freertos.c`（lvgl task 循环与两个 hook）、`platform/os/freertos_runtime_stats.*`[待建]、基础 linker 脚本
+- `docs/01_bringup_log.md`
 
 **编译验证方式**
 
 - 在已激活Bundle终端内启动`cmd.exe /d`，在全新`build`上原样执行固定命令，零错误零警告；再执行一次增量固定命令，结果一致。
 - 同一shell的`where.exe`/版本记录与CMake generator/compiler硬闸门必须解析到§1.4 Bundle；故意从普通Nordic终端configure以及从Windows PowerShell 5.1直接解释固定命令都不得成为有效验收，不能生成一个“看似成功”的host/错误工具工程。
-- 检查 ELF 架构、entry、Flash/SRAM 使用和 `.map`；确认 GCC flags 为 `-mcpu=cortex-m33 -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb`，没有意外链接 Riverdi LCD 文件。
-- `git apply --check` 验证 Nema patch只适用于锁定 `v9.3.0`，patch内容与上游 `ff620cafc...` 等价；FreeRTOS banner、port路径、heap实现与锁定值一致。
-- 预处理/compile assertions要求`configENABLE_FPU=1`、`configENABLE_MPU=0`、`configENABLE_TRUSTZONE=0`、`configRUN_FREERTOS_SECURE_ONLY=0`、`configRUN_TIME_COUNTER_TYPE=uint64_t`，且runtime stats两个port宏存在。`arm-none-eabi-nm`/map要求SVC/PendSV/SysTick各只有一个strong definition且来自FreeRTOS port，`TIM2_IRQHandler`只有HAL timebase一个owner；Cube IRQ文件出现前三个symbol即构建失败。
+- 检查 ELF 架构、entry、Flash/SRAM 使用和 `.map`；确认 GCC flags 为 `-mcpu=cortex-m33 -mfloat-abi=hard -mthumb`（当前 `-mfpu=fpv4-sp-d16`，待统一为 `fpv5-sp-d16`），没有意外链接 Riverdi LCD 文件。
+- LVGL 集成审计：`lv_version.h` 为 9.3.0；`lv_conf.h` 经 `LV_BUILD_CONF_PATH` 生效；ELF 含 `lv_init/lv_tick_set_cb/lv_timer_handler`；vendor 树与上游 tag 无 diff（无本地修改）。
+- 预处理/compile assertions要求`configENABLE_FPU=1`、`configENABLE_MPU=0`、`configENABLE_TRUSTZONE=0`、`configRUN_FREERTOS_SECURE_ONLY=0`、`configTOTAL_HEAP_SIZE=65536`、栈溢出/malloc-failed hook 已启用。`arm-none-eabi-nm`/map要求SVC/PendSV/SysTick各只有一个strong definition且来自FreeRTOS port，`TIM2_IRQHandler`只有HAL timebase一个owner；Cube IRQ文件出现前三个symbol即构建失败。runtime stats 宏断言在 provider 落地后补齐。
 
 **上板验证步骤**
 
@@ -494,7 +496,7 @@ cmake -S . -B build && cmake --build build
 
 **回退方案**
 
-- 保留CubeMX首次生成的`.ioc`/commit和修改前option-byte dump；若RTOS启动失败，先退最小HSE+GPIO+TIM2 HAL tick，再接FreeRTOS SysTick/handlers，最后启用FPU/runtime stats。不得通过让HAL与FreeRTOS共用SysTick或复制handler来“绕过”。工具、依赖、patch适用性、timebase或option-byte闸门任一未通过都不进入M1；恢复option bytes必须使用已保存的明确值，禁止猜测。
+- 保留CubeMX首次生成的`.ioc`/commit和修改前option-byte dump；若RTOS启动失败，先退最小HSE+GPIO+TIM2 HAL tick，再接FreeRTOS SysTick/handlers，最后启用FPU/runtime stats。不得通过让HAL与FreeRTOS共用SysTick或复制handler来“绕过”。工具、依赖、timebase或option-byte闸门任一未通过都不进入M1；恢复option bytes必须使用已保存的明确值，禁止猜测。
 
 ### M1：目标板 DSI/LTDC 单缓冲点屏基线
 
@@ -506,7 +508,7 @@ cmake -S . -B build && cmake --build build
 
 **预计改动文件**
 
-- `.ioc`、`Core/Src/main.c` USER CODE 区、`Core/Src/ltdc.c`、`dsi.c`、相关 MSP/IRQ/line-event callback
+- `.ioc`、`Src/main.c` USER CODE 区、`Src/ltdc.c`、`dsihost.c`、相关 MSP/IRQ/line-event callback
 - `platform/display/board_lcd.c/.h`、BSP LCD/HX8379 component 接入
 - `linker/STM32U5A9NJHXQ_DIAG_ARGB.ld` 中精确的跨bank诊断 framebuffer；正式链接脚本不改
 
@@ -570,12 +572,12 @@ cmake -S . -B build && cmake --build build
 
 - 接入锁定的 LVGL `v9.3.0`：逻辑分辨率 480×480，两个 draw buffer 指向 GFXMMU virtual buffer 0/1；调用该版本真实的 `lv_display_set_buffers_with_stride()`，`buf_size=3072*480=1,474,560 B`、stride=3072 B、render mode 只用 `LV_DISPLAY_RENDER_MODE_DIRECT`，不能写成 FULL，也不能把压缩物理 footprint 当作 LVGL buffer size。
 - 保持 `LV_USE_ST_LTDC=0`，由项目 display port 实现最后 flush、单 pending VBlank reload 和 ownership；启动时清两块 buffer并反向建立 LTDC front/LVGL首个 draw buffer，防止第一帧同址读写。
-- FreeRTOS独立LVGL task，`LV_USE_OS=LV_OS_NONE`，其他任务只经队列投递；使用v9.3真实`lv_tick_set_cb()`接1-ms FreeRTOS tick的项目wrapper，不从第二个ISR重复`lv_tick_inc()`。本里程碑只启用SW draw unit。
+- FreeRTOS独立LVGL task，`LV_USE_OS=LV_OS_FREERTOS`（已锁定），其他任务只经队列投递；tick已接`lv_tick_set_cb(xTaskGetTickCount)`，主循环为`lv_timer_handler()+osDelay(2)`；不从第二个ISR重复`lv_tick_inc()`。本里程碑只启用SW draw unit；观察OS层创建的SW单元渲染线程栈/优先级行为。
 - 接入 line-event frame tick、reload-event swap done、LVGL perf monitor/profiler backend和最小 DWT 打点；明确统计 v9.3 direct 双缓冲的 `refr_sync_areas()` CPU逐行同步复制。`perf_gpio` 只保证默认关闭时和可选开启时均可编译，不参与上板验收。
 
 **预计改动文件**
 
-- `Middlewares/Third_Party/LVGL` submodule pointer（锁 tag；M3 不应用 Nema patch，也不改源码）
+- `Middlewares/Third_Party/LVGL` vendor 树（校验与上游 v9.3.0 无 diff；M3 不改源码）
 - `config/lv_conf.h`、`platform/display/lv_port_display.*`
 - `platform/os/lvgl_task.*`、`app_queues.*`
 - `platform/perf/perf_clock.*`、`perf_gpio.*`
@@ -601,22 +603,22 @@ cmake -S . -B build && cmake --build build
 
 **目标**
 
-- 先将唯一 `0001-nema-wait-no-os.patch` 应用到锁定的 LVGL v9.3.0，再接 NeoChrom/NemaGFX 预编译库和真实 STM32 HAL；分别建立 SW/Nema-only smoke test。
+- 接 NeoChrom/NemaGFX 预编译库（vendor 树 `libs/nema_gfx/`）和真实 STM32 HAL，完成等待由 OS 层 `wait_for_finish_cb` 保证；分别建立 SW/Nema-only smoke test。
 - 关闭stock `LV_USE_DRAW_DMA2D`，按§5.1冻结的v9.3私有API边界、unit ID=5、score=20和注册顺序，实现由项目唯一拥有HAL handle、寄存器、完成/error状态和callback/IRQ的同步U5 DMA2D draw unit；有限50-ms poll timeout后abort/re-init且禁止换入失败buffer。分别建立DMA2D-only，再启用确定性类型路由。
-- GPU2D 前保持 DCACHE2 disabled，清除并读回 `SYSCFG_CFGR1.SRAMCACHED`；Nema pool固定 SRAM3。safe profile 由“DMA2D同步完成 + Nema task内 `nema_cl_wait()` + 单LVGL caller”实现全局严格串行，frame末仍做总fence和idle断言。
+- GPU2D 前保持 DCACHE2 disabled，清除并读回 `SYSCFG_CFGR1.SRAMCACHED`；Nema pool固定 SRAM3。safe profile 由“DMA2D同步完成 + Nema/SW 经 OS 层 wait_for_finish + 单LVGL caller + flush 前总等待”实现严格串行，frame末仍做总fence和idle断言。
 - 为 Nema/GPU2D、DMA2D、GFXMMU、LTDC、DSI 建立可读回的enable/status/error counter；任何会调用 FreeRTOS API 的 IRQ 均核实优先级，否则 ISR只置原子标志。
 
 **预计改动文件**
 
-- `.ioc`、`Core/Src/gpu2d.c`、`dma2d.c`、IRQ 文件（safe profile 不生成/调用 `MX_DCACHE2_Init()`）
+- `.ioc`、`Src/gpu2d.c`[待建]、`dma2d.c`（已生成）、IRQ 文件（safe profile 不生成/调用 `MX_DCACHE2_Init()`）
 - `platform/graphics/gpu2d_port.*`、`dma2d_port.*`、`lv_draw_dma2d_u5.*`、`gfx_arbiter.*`
 - `platform/memory/cache.*`、`config/lv_conf.h`、链接脚本/CMake
-- `patches/lvgl/0001-nema-wait-no-os.patch`；NemaGFX预编译库的明确 GCC/CPU/FPU link选项和hash清单
+- NemaGFX预编译库的明确 GCC/CPU/FPU link选项和hash清单（取自 vendor 树 `libs/nema_gfx/`）
 
 **编译验证方式**
 
 - default `BOTH_SERIAL` 用固定bare命令验收；另外显式执行各自独立build目录的 `cmake --preset sw_only/nema_only/dma2d_only/both_serial` 与对应build命令，四种profile均零错误零警告，不能声称bare命令自动读取preset。
-- 生成并审查 link map：Nema 库必须是锁定hash的 Cortex-M33/Thumb/hard-float版本；patch只产生上游4行no-OS wait语义差异；stock DMA2D/ST LTDC对象未链接；HAL DMA2D handle、IRQ/callback各只有一个owner；DCACHE2 init符号不在调用图中。
+- 生成并审查 link map：Nema 库必须是锁定hash的 Cortex-M33/Thumb/hard-float版本；vendor 树与上游 v9.3.0 无 diff；stock DMA2D/ST LTDC对象未链接；HAL DMA2D handle、IRQ/callback各只有一个owner；DCACHE2 init符号不在调用图中。
 - 静态/主机测试验证项目unit只包含锁定hash的`lv_draw_private.h`，ID 5不与SW 1/Nema 7冲突，注册发生在`lv_init()`后且display/task创建前；支持task得到score 20，不支持task保持原score。每个task状态序列为evaluate→dispatch→hardware done/error→READY；全局活动单元计数永不大于1，frame fence前两个硬件均idle。
 
 **上板验证步骤**
@@ -628,7 +630,7 @@ cmake -S . -B build && cmake --build build
 
 **回退方案**
 
-- 用编译开关先退到 `NEMA_ONLY` 或 `DMA2D_ONLY`，最后退到 M3 SW；保留同一display/memory配置以便定位。Nema patch、闭源库ABI、DMA2D唯一owner或错误链路任一不满足时，不得交付 `BOTH_SERIAL`。出现一致性异常时维持DCACHE2 off、PSRAM/framebuffer non-cache，并逐单元定位；正式配置本来就不允许硬件并发。
+- 用编译开关先退到 `NEMA_ONLY` 或 `DMA2D_ONLY`，最后退到 M3 SW；保留同一display/memory配置以便定位。Nema 库 ABI、DMA2D唯一owner或错误链路任一不满足时，不得交付 `BOTH_SERIAL`。出现一致性异常时维持DCACHE2 off、PSRAM/framebuffer non-cache，并逐单元定位；正式配置本来就不允许硬件并发。
 
 ### M5：外部存储、完整性能设施与合成基准
 
@@ -695,9 +697,9 @@ cmake -S . -B build && cmake --build build
 
 | 风险 | 早期征兆/量化指标 | 规避与回退 |
 |---|---|---|
-| LVGL tag/补丁漂移 | 版本头、submodule commit或Nema行为与锁定值不一致 | 锁 `v9.3.0` commit `c033a98a...`；M4只应用由上游 `ff620caf...`回移的单独patch，每轮校验tree diff；9.6.0-dev仅作参考 |
-| v9.3 no-OS Nema提前标READY | 随机缺块、下一单元覆盖尚未完成的GPU结果 | patch在Nema task结束处同步`nema_cl_wait()`；状态单测和DWT busy/wait证明完成后才READY；不通过则退Nema-off |
-| FreeRTOS来源/port漂移 | banner、port object、ABI或heap实现不同 | 锁本地Kernel V10.4.6 tree hash、GCC `ARM_CM33_NTZ/non_secure`、native API、`heap_4`与application heap；不称其为CubeMX生成物 |
+| LVGL vendor 树漂移 | `lv_version.h`、目录内容或行为与上游 v9.3.0 不一致 | 锁 `v9.3.0` commit `c033a98a...`；每轮校验 vendor 树与上游 tag 无 diff（无本地修改）；升级只经官方新版本替换并重新评审 |
+| v9.3 Nema 完成等待 | 随机缺块、下一单元覆盖尚未完成的GPU结果 | 已由 `LV_USE_OS=LV_OS_FREERTOS` 的官方 `wait_for_finish_cb` 机制规避；M4 用状态单测和 DWT busy/wait 复核；不通过则退 Nema-off |
+| FreeRTOS来源/port漂移 | banner、port object、ABI或heap实现不同 | 锁 CubeMX X-CUBE-FREERTOS 1.3.1（Kernel V10.6.2）、GCC `ARM_CM33_NTZ/non_secure`、CMSIS-RTOS2 wrapper、`heap_4`；版本变更须经 ioc diff 审查 |
 | FreeRTOS/Cube重复exception handler或HAL tick停表 | link duplicate；scheduler后`HAL_GetTick()`不再增长 | FreeRTOS port唯一拥有SVC/PendSV/SysTick；Cube IRQ文件无同名定义；HAL改用TIM2，nm/map和scheduler前后双时基测试硬验收 |
 | CM33 FPU/MPU/TrustZone或runtime stats宏错误 | 编译报错、浮点context损坏、项目MPU被port改写或统计回绕 | §6.2显式锁FPU=1、FreeRTOS MPU wrapper=0、TZ=0、secure-only=0、64-bit counter和两个port宏；FPU task smoke与统计闭合验收 |
 | 普通终端误用Nordic工具、错误shell或误以为preset自动生效 | 编译器缺失、`&&`解析失败、生成器/版本/profile与记录不符 | 在已激活Project Bundle终端继承环境到`cmd.exe /d`运行固定bare命令；CMake硬闸门检查路径/版本；额外profile显式用`cmake --preset` |
@@ -718,7 +720,7 @@ cmake -S . -B build && cmake --build build
 | 混用line-event与reload-event，或积压reload | 刷新率随render FPS变化、front/back错乱、submit/done不守序 | line-event每帧rearm只计scanout；RR callback只完成swap；始终满足`0 <= submit-done <= 1`且停稳后相等，只有RR callback改变ownership |
 | 把direct双缓冲误报为完全zero-copy或把估算bytes当精确值 | 局部dirty时CPU/P95升高，日志却仍报0 copy | flush不做全帧copy；profiler精确统计`sync_copy_calls/time`，bytes只报带`est`标记的几何推算；分别测100% dirty和局部dirty |
 | 项目DMA2D私有API漂移、owner重复或poll死等 | score路由错误、duplicate symbol、渲染任务永久卡住 | 锁v9.3私有头hash、ID5/score20/注册顺序；`LV_USE_DRAW_DMA2D=0`且唯一HAL owner；50-ms timeout后abort/re-init并禁止swap失败buffer |
-| NeoChrom/DMA2D非真正串行 | 偶发像素差、active count>1、长尾增大 | safe profile用同步DMA2D、Nema wait patch、单LVGL caller实现；记录active count并在frame fence断言两者idle；并发需另做arbiter |
+| NeoChrom/DMA2D非真正串行 | 偶发像素差、active count>1、长尾增大 | safe profile用同步DMA2D、OS层wait_for_finish、单LVGL caller实现；记录active count并在frame fence断言两者idle；并发需另做arbiter |
 | 加速器与LTDC总线争用 | LTDC underrun、P95/worst恶化 | FB分SRAM1/5、监控underrun；降低块规模/资源带宽或退单元，scanout正确性优先于平均FPS |
 | GPU2D DCACHE2/SRAM cache不一致 | NemaVG/普通Nema混合后随机脏像素 | 不初始化/启用DCACHE2；GPU2D前清并读回`SYSCFG_CFGR1.SRAMCACHED`；不开展无维护闭环的DCACHE2 perf实验 |
 | GFXMMU独立data cache与LTDC/DMA2D冲突 | 旧像素、偶发脏块 | 正式显示始终关闭GFXMMU data cache/prefetch；U5A9不存在address cache，不把force flush当常规补丁 |
@@ -738,7 +740,7 @@ cmake -S . -B build && cmake --build build
 
 1. 一轮只实现一个里程碑；先复述该里程碑验收条件，再改文件。
 2. 每个 HAL/BSP/NemaGFX 调用在提交说明中列出原型来源路径；找不到原型立即停止并进入开放问题。
-3. 不手工编辑 LVGL 子模块。本计划获批准后唯一允许的例外是 M4 以 `git apply` 应用 `patches/lvgl/0001-nema-wait-no-os.patch`，且每轮校验它只含上游 `ff620caf...` 的 no-OS Nema wait 语义；v9.3 profiler tag 已足够做第一版分类统计，其他修改必须另出patch、论证并再次批准。
+3. 不修改 LVGL vendor 树，不携带任何 LVGL 补丁；每轮校验 `Middlewares/Third_Party/LVGL` 与上游 v9.3.0 无 diff。集成行为一律经官方配置项（`lv_conf.h`/`LV_BUILD_*`）实现；确需新语义时走官方版本升级路线并重新评审。v9.3 profiler tag 已足够做第一版分类统计。
 4. 每轮都执行固定 CMake 命令，并报告 warning/error 数、ELF/map/size；未跑通不交付上板步骤。
 5. 每轮上板只执行该里程碑列出的步骤，日志带 build id、板卡版本、配置 profile。
 6. 现实与本计划冲突时，先更新本文对应事实、内存表、风险或里程碑，再继续实现；不静默偏离。
@@ -748,4 +750,4 @@ cmake -S . -B build && cmake --build build
 M0 所需问题均已关闭。目前只剩：
 
 1. **HX8379-C/MB1835 RGB565 video mode（只阻塞 M2-B）**：若能取得与你这块 LCD 模组 revision 对应的 HX8379-C/MB1835 datasheet 或 ST 已验证 RGB565 初始化序列，请在 M2 前提供。拿不到资料时按既定门控执行：M2-A 正式基线使用 RGB565 framebuffer → DSI RGB888；M2-B 的 DSI RGB565 仅做可回退上板实验，不延误 M0、M1 或 M2-A。
-下一轮可以只执行 **M0**，不会提前写显示或 GPU 代码。
+下一轮进入 **M1**：目标板 DSI/LTDC 单缓冲点屏基线（M1-A 诊断态起步）。
