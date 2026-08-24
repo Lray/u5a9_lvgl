@@ -45,6 +45,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     platform/display/board_lcd.c
+    platform/display/framebuffer.c
 )
 
 # LVGL v9.3.0 (official release tree, configured via config/lv_conf.h)
@@ -64,6 +65,7 @@ target_include_directories(lvgl PUBLIC
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/display
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/STM32U5x9J-DK
 )
 
 # Add project symbols (macros)

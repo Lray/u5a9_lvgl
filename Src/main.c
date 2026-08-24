@@ -29,6 +29,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "board_lcd.h"
+#include "framebuffer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -107,11 +108,20 @@ int main(void)
   MX_LTDC_Init();
   MX_GFXMMU_Init();
   /* USER CODE BEGIN 2 */
+  FB_Init();
   if (Board_LCD_BringUp() != HAL_OK)
   {
     Error_Handler();
   }
   Board_LCD_DiagnosticPatterns();
+  Board_LCD_VerifyMapping();
+  for (uint32_t i = 0U; i < 100U; i++)
+  {
+    Board_LCD_FillBack((i & 1U) ? 0xFF0000FFUL : 0xFFFF0000UL);
+    FB_Submit();
+    while (g_fb_swap_pending != 0U) { }
+    HAL_Delay(500U);
+  }
   Board_LCD_SoakLoop();
   /* USER CODE END 2 */
 

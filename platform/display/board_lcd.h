@@ -9,6 +9,8 @@ extern "C" {
 
 HAL_StatusTypeDef Board_LCD_BringUp(void);
 void Board_LCD_DiagnosticPatterns(void);
+void Board_LCD_VerifyMapping(void);
+void Board_LCD_FillBack(uint32_t color);
 void Board_LCD_SoakLoop(void);
 uint32_t Board_LCD_GetLineEvents(void);
 uint32_t Board_LCD_GetLastFramePeriod(void);

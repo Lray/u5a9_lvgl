@@ -2,12 +2,15 @@
 #include <string.h>
 #include "dsihost.h"
 #include "ltdc.h"
+#include "gfxmmu.h"
+#include "framebuffer.h"
+#include "stm32u5x9j_discovery_gfxmmu_lut.h"
 
-#define DIAG_FB_WIDTH   480UL
-#define DIAG_FB_HEIGHT  481UL
+#define VIRTUAL_BUFFER0_BASE 0x24000000UL
+#define FB_LOGICAL_WIDTH  480UL
+#define FB_LOGICAL_HEIGHT 480UL
 
-static uint32_t m_diag_fb[DIAG_FB_WIDTH * DIAG_FB_HEIGHT]
-    __attribute__((section(".diag_fb"), aligned(16)));
+/* m_fb0_phys / m_fb1_phys owned by framebuffer.c (section .fb0_phys/.fb1_phys) */
 
 volatile uint32_t g_board_lcd_line_events;
 volatile uint32_t g_board_lcd_last_frame_period;
@@ -16,6 +19,7 @@ volatile uint32_t g_board_lcd_dsi_error_count;
 volatile uint32_t g_board_lcd_dsi_last_error;
 volatile uint32_t g_board_lcd_ltdc_error_count;
 volatile uint32_t g_board_lcd_ltdc_last_error;
+volatile uint32_t g_board_lcd_map_check[6];
 
 static void snapshot_regs(void)
 {
@@ -42,22 +46,52 @@ static void snapshot_regs(void)
   g_board_lcd_regs.ltdc_cfblnr = LTDC_Layer1->CFBLNR;
 }
 
-static void fill_rect(uint32_t color, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+static void fill_rect_at(uint32_t base, uint32_t color, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
-  uint32_t *row = &m_diag_fb[(y * DIAG_FB_WIDTH) + x];
+  uint32_t *row = (uint32_t *)(base + (y * FB_STRIDE_BYTES) + (x * 4U));
   for (uint32_t i = 0U; i < h; i++)
   {
     for (uint32_t j = 0U; j < w; j++)
     {
       row[j] = color;
     }
-    row += DIAG_FB_WIDTH;
+    row += FB_STRIDE_BYTES / 4U;
   }
+}
+
+static void fill_rect(uint32_t color, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+{
+  fill_rect_at(g_fb_back_virtual, color, x, y, w, h);
+}
+
+static uint32_t virt_to_phys(uint32_t x, uint32_t y)
+{
+  uint32_t lo = gfxmmu_lut_config_argb8888[(y * 2U) + 1U] & 0x003FFFF0U;
+  uint32_t fvb = (gfxmmu_lut_config_argb8888[y * 2U] >> 8U) & 0xFFU;
+  uint32_t lvb = (gfxmmu_lut_config_argb8888[y * 2U] >> 16U) & 0xFFU;
+  uint32_t block = fvb + (x / 4U);
+
+  if (block > lvb)
+  {
+    return 0U;
+  }
+  return (uint32_t)m_fb0_phys + ((lo + (fvb * 16U)) & 0x003FFFFFU) + ((block - fvb) * 16U) +
+         ((x % 4U) * 4U);
 }
 
 HAL_StatusTypeDef Board_LCD_BringUp(void)
 {
   RCC_PeriphCLKInitTypeDef clk = {0};
+
+  if (HAL_GFXMMU_ConfigLut(&hgfxmmu, 0, GFXMMU_LUT_SIZE,
+                           (uint32_t)gfxmmu_lut_config_argb8888) != HAL_OK)
+  {
+    return HAL_ERROR;
+  }
+  if (HAL_GFXMMU_DisableLutLines(&hgfxmmu, GFXMMU_LUT_SIZE, 544U) != HAL_OK)
+  {
+    return HAL_ERROR;
+  }
 
   clk.PeriphClockSelection = RCC_PERIPHCLK_DSI;
   clk.DsiClockSelection = RCC_DSICLKSOURCE_DSIPHY;
@@ -193,7 +227,7 @@ HAL_StatusTypeDef Board_LCD_BringUp(void)
   }
   HAL_Delay(120);
 
-  memset(m_diag_fb, 0x00, sizeof(m_diag_fb));
+  fill_rect_at(VIRTUAL_BUFFER0_BASE, 0xFF000000UL, 0U, 0U, FB_LOGICAL_WIDTH, FB_LOGICAL_HEIGHT);
 
   if (HAL_DSI_ShortWrite(&hdsi, 0, DSI_DCS_SHORT_PKT_WRITE_P0, 0x29, 0x00) != HAL_OK)
   {
@@ -213,6 +247,42 @@ HAL_StatusTypeDef Board_LCD_BringUp(void)
   return HAL_LTDC_ProgramLineEvent(&hltdc, 0);
 }
 
+void Board_LCD_VerifyMapping(void)
+{
+  uint32_t i;
+  uint32_t pass = 0U;
+
+  for (i = 0U; i < 6U; i++)
+  {
+    g_board_lcd_map_check[i] = 0U;
+  }
+
+  g_board_lcd_map_check[0] = 0xFF00FF00UL;
+  fill_rect(g_board_lcd_map_check[0], 240U, 240U, 1U, 1U);
+  g_board_lcd_map_check[1] = *(volatile uint32_t *)virt_to_phys(240U, 240U);
+  if (g_board_lcd_map_check[1] == g_board_lcd_map_check[0])
+  {
+    pass++;
+  }
+
+  g_board_lcd_map_check[2] = 0xFFFF0000UL;
+  *(volatile uint32_t *)(VIRTUAL_BUFFER0_BASE + (0U * FB_STRIDE_BYTES) + (200U * 4U)) =
+      g_board_lcd_map_check[2];
+  if (virt_to_phys(200U, 0U) == 0U)
+  {
+    pass++;
+  }
+  g_board_lcd_map_check[3] =
+      *(volatile uint32_t *)(VIRTUAL_BUFFER0_BASE + (0U * FB_STRIDE_BYTES) + (200U * 4U));
+  if (g_board_lcd_map_check[3] == 0xFFFFFFFFUL)
+  {
+    pass++;
+  }
+
+  g_board_lcd_map_check[4] = pass;
+  g_board_lcd_map_check[5] = virt_to_phys(240U, 240U);
+}
+
 void Board_LCD_DiagnosticPatterns(void)
 {
   static const uint32_t colors[] = {0xFFFF0000UL, 0xFF00FF00UL, 0xFF0000FFUL, 0xFFFFFFFFUL,
@@ -222,16 +292,16 @@ void Board_LCD_DiagnosticPatterns(void)
 
   for (uint32_t c = 0U; c < (sizeof(colors) / sizeof(colors[0])); c++)
   {
-    fill_rect(colors[c], 0U, 0U, (uint32_t)DIAG_FB_WIDTH, (uint32_t)DIAG_FB_HEIGHT);
+    fill_rect(colors[c], 0U, 0U, FB_LOGICAL_WIDTH, FB_LOGICAL_HEIGHT);
     HAL_Delay(3000);
   }
 
-  for (uint32_t y = 0U; y < (uint32_t)DIAG_FB_HEIGHT; y += 8U)
+  for (uint32_t y = 0U; y < FB_LOGICAL_HEIGHT; y += 8U)
   {
-    for (uint32_t x = 0U; x < (uint32_t)DIAG_FB_WIDTH; x += 8U)
+    for (uint32_t x = 0U; x < FB_LOGICAL_WIDTH; x += 8U)
     {
-      uint32_t w = ((DIAG_FB_WIDTH - x) < 8U) ? (DIAG_FB_WIDTH - x) : 8U;
-      uint32_t h = ((DIAG_FB_HEIGHT - y) < 8U) ? (DIAG_FB_HEIGHT - y) : 8U;
+      uint32_t w = ((FB_LOGICAL_WIDTH - x) < 8U) ? (FB_LOGICAL_WIDTH - x) : 8U;
+      uint32_t h = ((FB_LOGICAL_HEIGHT - y) < 8U) ? (FB_LOGICAL_HEIGHT - y) : 8U;
       fill_rect((((y / 8U) + (x / 8U)) & 1U) ? white : black, x, y, w, h);
     }
   }
@@ -265,6 +335,11 @@ void HAL_LTDC_ErrorCallback(LTDC_HandleTypeDef *hltdc)
   g_board_lcd_ltdc_last_error = hltdc->ErrorCode;
 }
 
+void Board_LCD_FillBack(uint32_t color)
+{
+  fill_rect(color, 0U, 0U, FB_LOGICAL_WIDTH, FB_LOGICAL_HEIGHT);
+}
+
 void Board_LCD_SoakLoop(void)
 {
   static const uint32_t bars[7] = {0xFFFFFFFFUL, 0xFFFFFF00UL, 0xFF00FFFFUL, 0xFF00FF00UL,
@@ -275,17 +350,21 @@ void Board_LCD_SoakLoop(void)
   {
     for (uint32_t b = 0U; b < 7U; b++)
     {
-      fill_rect(bars[b], b * bar_w, 0U, bar_w, DIAG_FB_HEIGHT - 1U);
+      fill_rect(bars[b], b * bar_w, 0U, bar_w, FB_LOGICAL_HEIGHT);
     }
-    fill_rect(0xFF000000UL, 7U * bar_w, 0U, DIAG_FB_WIDTH - (7U * bar_w), DIAG_FB_HEIGHT - 1U);
-    HAL_Delay(5000);
+    fill_rect(0xFF000000UL, 7U * bar_w, 0U, FB_LOGICAL_WIDTH - (7U * bar_w), FB_LOGICAL_HEIGHT);
+    FB_Submit();
+    while (g_fb_swap_pending != 0U) { }
+    HAL_Delay(2000U);
 
-    for (uint32_t y = 0U; y < DIAG_FB_HEIGHT - 1U; y++)
+    for (uint32_t y = 0U; y < FB_LOGICAL_HEIGHT; y++)
     {
-      uint32_t v = (y * 255U) / (DIAG_FB_HEIGHT - 1U);
-      fill_rect(0xFF000000UL | (v << 16U) | (v << 8U) | v, 0U, y, DIAG_FB_WIDTH, 1U);
+      uint32_t v = (y * 255U) / (FB_LOGICAL_HEIGHT - 1U);
+      fill_rect(0xFF000000UL | (v << 16U) | (v << 8U) | v, 0U, y, FB_LOGICAL_WIDTH, 1U);
     }
-    HAL_Delay(5000);
+    FB_Submit();
+    while (g_fb_swap_pending != 0U) { }
+    HAL_Delay(2000U);
   }
 }
 

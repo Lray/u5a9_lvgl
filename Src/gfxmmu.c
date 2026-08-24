@@ -41,7 +41,7 @@ void MX_GFXMMU_Init(void)
   /* USER CODE END GFXMMU_Init 1 */
   hgfxmmu.Instance = GFXMMU;
   hgfxmmu.Init.BlocksPerLine = GFXMMU_192BLOCKS;
-  hgfxmmu.Init.DefaultValue = 0;
+  hgfxmmu.Init.DefaultValue = 0xFF000000;
   hgfxmmu.Init.Buffers.Buf0Address = 0x20000000;
   hgfxmmu.Init.Buffers.Buf1Address = 0x201A0000;
   hgfxmmu.Init.Buffers.Buf2Address = 0;

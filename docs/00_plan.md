@@ -532,6 +532,8 @@ cmake -S . -B build && cmake --build build
 
 ### M2：GFXMMU RGB565 双缓冲、DSI 色深门控与 VBlank swap
 
+> 执行状态：**进行中（2026-08-24）**。**M2 步骤 1（ARGB8888 复现）与步骤 2（双缓冲 VBlank swap）已上板通过**：正式分区 linker（FB0/FB1 各 720 KiB@SRAM1/SRAM5）、BSP ARGB8888 LUT 注入、LTDC virtual 0x24000000/0x24400000 双缓冲、单 pending reload 状态机（submit=done=113、pending/errors=0、仅 reload callback 改所有权）、映射校验 3/3、78.4 Hz、错误零新增；证据与排查记录见 [03_m2_log.md](03_m2_log.md)。**用户决策**：default 值改黑 0xFF000000（白圈观感）；圆边 4px 锯齿为 GFXMMU 16-B block 硬件极限。下一步：M2-A（LTDC RGB565 + 已导入 RGB565 LUT）。
+
 **目标**
 
 - 先用项目显式放置在 SRAM1 的 720-KiB `.fb0_phys` 复现 BSP ARGB8888 LUT + 单 GFXMMU buffer，证明 virtual→physical 映射；map 必须证明 BSP 内部隐藏的 `PhysFrameBuffer[184320]` 已被回收，不能同时占 SRAM。
