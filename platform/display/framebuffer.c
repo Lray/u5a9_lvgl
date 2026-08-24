@@ -78,4 +78,6 @@ void HAL_LTDC_ReloadEventCallback(LTDC_HandleTypeDef *hltdc)
   g_fb_swap_pending = 0U;
   g_fb_done_ts[m_ts_idx & 7U] = DWT->CYCCNT;
   m_ts_idx++;
+
+  __HAL_LTDC_ENABLE_IT(hltdc, LTDC_IT_RR);
 }

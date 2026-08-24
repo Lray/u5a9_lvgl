@@ -38,6 +38,8 @@ typedef struct
   uint32_t ltdc_cfbar;
   uint32_t ltdc_cfblr;
   uint32_t ltdc_cfblnr;
+  uint32_t gfxmmu_b0cr;
+  uint32_t gfxmmu_b1cr;
 } Board_LCD_RegSnapshot_t;
 
 extern volatile Board_LCD_RegSnapshot_t g_board_lcd_regs;
@@ -45,6 +47,8 @@ extern volatile uint32_t g_board_lcd_dsi_error_count;
 extern volatile uint32_t g_board_lcd_dsi_last_error;
 extern volatile uint32_t g_board_lcd_ltdc_error_count;
 extern volatile uint32_t g_board_lcd_ltdc_last_error;
+extern volatile uint32_t g_board_lcd_gfxmmu_error_count;
+extern volatile uint32_t g_board_lcd_gfxmmu_last_error;
 
 #ifdef __cplusplus
 }

@@ -532,7 +532,7 @@ cmake -S . -B build && cmake --build build
 
 ### M2：GFXMMU RGB565 双缓冲、DSI 色深门控与 VBlank swap
 
-> 执行状态：**进行中（2026-08-24）**。**M2-A 已上板通过**：LTDC RGB565（ImageWidth 1536/stride 3072）+ 已导入 RGB565 LUT（370,256 B footprint 与 validator 口径自洽）+ FB0/FB1 收紧 384 KiB + DSI RGB888 冻结不变；映射校验 3/3、swap 104==104 无积压、78.47 Hz、错误零新增；证据见 [03_m2_log.md](03_m2_log.md)。M2-B（DSI RGB565 冷启动实验）与 M2 剩余收尾（GFXMMU B0CR/B1CR 精确读回、30 min 长稳）待做。
+> 执行状态：**进行中（2026-08-24）**。**M2-A 已上板通过**（RGB565 + LUT + 384 KiB 双缓冲，见前条）；**M2 收尾已通过**：B0CR/B1CR 读回精准命中 §4.4（PBBA=0x20000000/PBO0=0/PBO1=0x1A0000、物理首址=fb0/fb1 符号、换帧期不变）、GFXMMU 监控链路闭合（NVIC 134/IRQHandler/回调/计数=0）、长稳以用户指定 10 min 门收尾（实际 20 min 连续证据，错误零新增）；**真 bug 修复**：HAL RR 一次性禁使能竞态导致第 92 次 swap 后 reload 事件丢失（swap 死等）— re-arm RR 修复并验证（114 次持续）。证据见 [03_m2_log.md](03_m2_log.md)。**M2 完成**（M2-B 为可选非阻塞实验，资料不足不阻塞）。
 
 **目标**
 

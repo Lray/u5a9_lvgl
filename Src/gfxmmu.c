@@ -74,7 +74,8 @@ void HAL_GFXMMU_MspInit(GFXMMU_HandleTypeDef* gfxmmuHandle)
     /* GFXMMU clock enable */
     __HAL_RCC_GFXMMU_CLK_ENABLE();
   /* USER CODE BEGIN GFXMMU_MspInit 1 */
-
+    HAL_NVIC_SetPriority(GFXMMU_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(GFXMMU_IRQn);
   /* USER CODE END GFXMMU_MspInit 1 */
   }
 }

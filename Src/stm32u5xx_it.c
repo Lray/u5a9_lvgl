@@ -20,6 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32u5xx_it.h"
+#include "gfxmmu.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -222,5 +223,10 @@ void DSI_IRQHandler(void)
 void LTDC_IRQHandler(void)
 {
   HAL_LTDC_IRQHandler(&hltdc);
+}
+
+void GFXMMU_IRQHandler(void)
+{
+  HAL_GFXMMU_IRQHandler(&hgfxmmu);
 }
 /* USER CODE END 1 */

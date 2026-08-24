@@ -90,8 +90,19 @@ LTDC switched to `LTDC_PIXEL_FORMAT_RGB565` with `ImageWidth 1536` (stride 3072 
 
 Board-visible: RGB565 red/green/blue/white/black + checkerboard, 100 red(0xF800)/blue(0x001F) swaps at 2/s, double-buffered bar/ramp soak.
 
+## M2 wrap-up — registers, monitor chain and soak PASSED
+
+- **B0CR/B1CR readback** (snapshot + second sample 5 s later): B0CR=0x20000000 (PBBA=0x40>>23, PBO=0), B1CR=0x201A0000 (PBBA=0x40, PBO=0x001A0000); PBBA|PBO physical starts equal `.fb0_phys` (0x20000000) and `.fb1_phys` (0x201A0000) linker symbols; **unchanged across swaps**.
+- **CFBAR**: alternates 0x24000000/0x24400000 (front/back variables + register snapshot; direct APB probe read limited on this probe, firmware snapshot used).
+- **GFXMMU error-monitor chain closed**: NVIC (IRQn 134, priority 5) enabled in `HAL_GFXMMU_MspInit` USER CODE, `GFXMMU_IRQHandler` added in `stm32u5xx_it.c` USER CODE, `HAL_GFXMMU_ErrorCallback` counter added; readback 0 errors.
+- **Soak**: 20-min continuous (user accepted 10-min gate after aborting the 30-min wait; evidence 94,509 frames / 1,194 s covered at final probe, +18.6 min uninterrupted between probes), errors zero-increment (DSI=1 boot baseline, LTDC=0, GFXMMU=0), swap kept flowing.
+
+### Bug found and fixed — lost reload event on 92nd swap
+
+Long soak showed `swap_submit=done=91` frozen while the display stayed live: the 92nd `FB_Submit()` never received its reload event. Root cause: HAL_LTDC_IRQHandler's RR branch first **disables** the RR interrupt then clears the flag (one-shot RR); a reload trigger racing that window leaves RRIF set but RRIE cleared, so the next event is silently dropped and `while(g_fb_swap_pending)` spins forever. Fix: re-arm the RR interrupt (`__HAL_LTDC_ENABLE_IT(hltdc, LTDC_IT_RR)`) at the end of `HAL_LTDC_ReloadEventCallback` — same pattern as the per-frame line-event rearm. 100 s probe after fix: submit=done=114 and counting, no stall.
+
 ## Open items
 
-- M2 step 2 (double-buffer VBlank swap): see above — done; visual confirmation of red/blue + soak by user pending.
-- M2-A: switch LTDC to RGB565 (`ImageWidth` 1536, stride 3072), use the imported RGB565 LUT, footprint validator final numbers (366,992/370,256/370,304 criteria vs 370,256 actual), then tighten `.fb0_phys` to 384 KiB.
-- M2-B (optional, non-blocking): DSI RGB565 cold-boot experiment per plan.
+- M2-B (optional, non-blocking): DSI RGB565 cold-boot experiment per plan — blocked until panel datasheet/keying evidence.
+- M2 residual: formal 30-min soak (user accepted 10-min gate with 20-min continuous evidence); monitor fault-injection still register-level proof only (no safe trigger).
+- M3 next: FreeRTOS + LVGL software direct-render double-buffering on GFXMMU virtual buffers.

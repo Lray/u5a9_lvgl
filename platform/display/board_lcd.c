@@ -28,6 +28,8 @@ volatile uint32_t g_board_lcd_dsi_error_count;
 volatile uint32_t g_board_lcd_dsi_last_error;
 volatile uint32_t g_board_lcd_ltdc_error_count;
 volatile uint32_t g_board_lcd_ltdc_last_error;
+volatile uint32_t g_board_lcd_gfxmmu_error_count;
+volatile uint32_t g_board_lcd_gfxmmu_last_error;
 volatile uint32_t g_board_lcd_map_check[6];
 
 static void snapshot_regs(void)
@@ -53,6 +55,8 @@ static void snapshot_regs(void)
   g_board_lcd_regs.ltdc_cfbar = LTDC_Layer1->CFBAR;
   g_board_lcd_regs.ltdc_cfblr = LTDC_Layer1->CFBLR;
   g_board_lcd_regs.ltdc_cfblnr = LTDC_Layer1->CFBLNR;
+  g_board_lcd_regs.gfxmmu_b0cr = GFXMMU->B0CR;
+  g_board_lcd_regs.gfxmmu_b1cr = GFXMMU->B1CR;
 }
 
 static void fill_rect_at(uint32_t base, uint32_t color, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
@@ -337,6 +341,12 @@ void HAL_LTDC_ErrorCallback(LTDC_HandleTypeDef *hltdc)
 {
   g_board_lcd_ltdc_error_count++;
   g_board_lcd_ltdc_last_error = hltdc->ErrorCode;
+}
+
+void HAL_GFXMMU_ErrorCallback(GFXMMU_HandleTypeDef *hgfxmmu)
+{
+  g_board_lcd_gfxmmu_error_count++;
+  g_board_lcd_gfxmmu_last_error = HAL_GFXMMU_GetError(hgfxmmu);
 }
 
 void Board_LCD_FillBack(uint32_t color)
