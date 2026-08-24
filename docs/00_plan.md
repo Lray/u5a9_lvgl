@@ -18,7 +18,7 @@
 | `STM32CubeU5/Projects/STM32U5x9J-DK/Examples/DSI/DSI_VideoMode_SingleBuffer/` | 已验证 DSI video mode 的时钟树、管脚和启动顺序；当前 `main.c/.ioc` 实际未初始化 GFXMMU，因此只作为 DSI/LTDC/时钟基线 |
 | `lv_port_riverdi_stm32u5/Core/Src/gpu2d.c`、`dma2d.c`、`icache.c`、`dcache.c`、`lvgl_port_display.c`、`app_freertos.c` | `HAL_GPU2D_Init()`、`HAL_DMA2D_Init()`、Cache 和双缓冲接入风格；LCD 时序、LTDC 管脚和 framebuffer 地址不复用 |
 | 本工程 `Middlewares/Third_Party/LVGL/`（按官方指南 vendor 的 v9.3.0 发布树）及 [LVGL 官方 STM32 HAL 集成指南](https://docs.lvgl.io/master/integration/chip_vendors/stm32/add_lvgl_to_your_stm32_project.html)、[Integration Overview](https://docs.lvgl.io/master/integration/overview.html) | 接入方式（复制发布源码、`LV_BUILD_CONF_PATH` 指向 `config/lv_conf.h`、tick/display 初始化）、NeoChrom/DMA2D draw unit、ST LTDC direct driver、profiler tag、direct 双缓冲同步复制和 stride API 的真实实现；Riverdi 克隆仅作只读参考 |
-| 本工程 `Middlewares/Third_Party/FreeRTOS/Source/`（CubeMX X-CUBE-FREERTOS 1.3.1 生成） | FreeRTOS Kernel **V10.6.2**、GCC `ARM_CM33_NTZ/non_secure` port、`CMSIS_RTOS_V2` wrapper、`heap_4`；SVC/PendSV 来自 `portasm.c`、SysTick 来自 `port.c`（经 FreeRTOSConfig 的 `#define SysTick_Handler xPortSysTickHandler` 映射） |
+| 本工程 `Middlewares/Third_Party/FreeRTOS/Source/`（CubeMX X-CUBE-FREERTOS 1.3.1 生成） | FreeRTOS Kernel **V10.6.2**、GCC `ARM_CM33_NTZ/non_secure` port、`CMSIS_RTOS_V2` wrapper、`heap_4`；SVC/PendSV 来自 `portasm.c`、SysTick 来自 `CMSIS_RTOS_V2/cmsis_os2.c`（wrapper 单一强定义，map 已复核；2026-08-23 M1 记录更正原 `port.c` 表述） |
 
 官方在线依据：[RM0456](https://www.st.com/resource/en/reference_manual/rm0456-stm32u5-series-armbased-32bit-mcus-stmicroelectronics.pdf)、[UM2967](https://www.st.com/resource/en/user_manual/um2967-discovery-kits-with-stm32u5x9nj-mcus-stmicroelectronics.pdf)。实现时以仓库锁定版本中的头文件原型为准，本文不虚构 HAL/BSP/NemaGFX 调用。
 
@@ -500,6 +500,7 @@ cmake -S . -B build && cmake --build build
 
 ### M1：目标板 DSI/LTDC 单缓冲点屏基线
 
+> 执行状态：**进行中（2026-08-23）**。**M1-A 已上板通过**（六种图案正常，60 s line-event 4,732 vs 名义 4,747，−0.33%）；**M1-B1 已上板通过**；**M1-B2 profile 已冻结**：寄存器 readback 基线保存、20/20 复位通过、30 min 长稳按用户决定以 21 min 证据收尾（零新增错误）；错误监控实测发现并记录 **DSI PHY 每扫描线 1 次固有基线**（burst 每行 HS↔LP 切换，PE3/PE4，与 B2 delta 无关，视觉/帧率/LTDC 全正常），交付掩码排除 PHY、保留其余 9 位，LTDC 错误全程为 0；启动期一次性 ACK 已记录。证据见 [02_m1_log.md](02_m1_log.md)。下一轮进入 **M2 第一步**：BSP ARGB8888 LUT + 单 GFXMMU buffer 复现（正式 linker 落地、诊断 linker 撤销）。
 **目标**
 
 - **M1-A** 原样采用 Cube 的480×481 active/window/ImageHeight和单ARGB8888完整buffer，隔离DSI电气、clock lane inversion、LTDC timing、panel reset/backlight；这是诊断态，不是最终格式。

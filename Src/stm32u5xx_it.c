@@ -219,5 +219,8 @@ void DSI_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-
+void LTDC_IRQHandler(void)
+{
+  HAL_LTDC_IRQHandler(&hltdc);
+}
 /* USER CODE END 1 */

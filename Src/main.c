@@ -27,7 +27,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "board_lcd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -105,7 +105,12 @@ int main(void)
   MX_DSIHOST_DSI_Init();
   MX_LTDC_Init();
   /* USER CODE BEGIN 2 */
-
+  if (Board_LCD_BringUp() != HAL_OK)
+  {
+    Error_Handler();
+  }
+  Board_LCD_DiagnosticPatterns();
+  Board_LCD_SoakLoop();
   /* USER CODE END 2 */
 
   /* Init scheduler */

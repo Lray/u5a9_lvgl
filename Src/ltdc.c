@@ -61,7 +61,7 @@ void MX_LTDC_Init(void)
   }
   pLayerCfg.WindowX0 = 0;
   pLayerCfg.WindowX1 = LCD_WIDTH;
-  pLayerCfg.WindowY0 = 0;
+  pLayerCfg.WindowY0 = 1;
   pLayerCfg.WindowY1 = LCD_HEIGHT;
   pLayerCfg.PixelFormat = LTDC_PIXEL_FORMAT_ARGB8888;
   pLayerCfg.Alpha = 0xFF;
@@ -70,7 +70,7 @@ void MX_LTDC_Init(void)
   pLayerCfg.BlendingFactor2 = LTDC_BLENDING_FACTOR2_CA;
   pLayerCfg.FBStartAdress = LCD_FRAME_BUFFER;
   pLayerCfg.ImageWidth = LCD_WIDTH;
-  pLayerCfg.ImageHeight = LCD_HEIGHT;
+  pLayerCfg.ImageHeight = LCD_HEIGHT - 1U;
   pLayerCfg.Backcolor.Blue = 0;
   pLayerCfg.Backcolor.Green = 0;
   pLayerCfg.Backcolor.Red = 0;
