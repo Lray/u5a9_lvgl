@@ -6,9 +6,9 @@
 **  Abstract    : Formal SRAM partition linker (docs/00_plan.md §4.3/§6.4).
 **                SRAM1/2/3/5 declared as independent MEMORY windows.
 **
-**                M2 ARGB8888 reproduction phase: .fb0_phys is 720 KiB
-**                (BSP ARGB LUT footprint 733,936 B). RGB565 phase later
-**                tightens FB0 to 384 KiB without touching other sections.
+**                M2-A RGB565 phase: .fb0_phys is 384 KiB (RGB565 LUT
+**                footprint 370,256 B + slack). ARGB8888 reproduction phase
+**                used 720 KiB.
 **
 **  Target      : STMicroelectronics STM32U5A9xJ, 4096K FLASH / 2496K main SRAM
 **
@@ -194,7 +194,7 @@ SECTIONS
   } >RUNCTX
   ASSERT(ABSOLUTE(.) <= 0x2019C000, "SRAM3 runtime exceeds [0x20170000,0x2019C000) window")
 
-  /* GFXMMU physical buffer 0: SRAM1, 720 KiB ARGB reproduction phase */
+  /* GFXMMU physical buffer 0: SRAM1, 384 KiB RGB565 (footprint 370,256 B + slack) */
   .fb0_phys (NOLOAD) :
   {
     . = ALIGN(16);
@@ -204,9 +204,9 @@ SECTIONS
     __fb0_phys_end__ = .;
   } >SRAM1
   ASSERT(ADDR(.fb0_phys) == 0x20000000, "fb0_phys not at 0x20000000")
-  ASSERT(SIZEOF(.fb0_phys) <= 737280, "fb0_phys exceeds 720 KiB")
+  ASSERT(SIZEOF(.fb0_phys) <= 393216, "fb0_phys exceeds 384 KiB")
 
-/* GFXMMU physical buffer 1: SRAM5, 720 KiB ARGB double-buffer phase; RGB565 tightens to 384 KiB */
+/* GFXMMU physical buffer 1: SRAM5, 384 KiB RGB565 */
   .fb1_phys (NOLOAD) :
   {
     . = ALIGN(16);
@@ -216,7 +216,7 @@ SECTIONS
     __fb1_phys_end__ = .;
   } >SRAM5
   ASSERT(ADDR(.fb1_phys) == 0x201A0000, "fb1_phys not at 0x201A0000")
-  ASSERT(SIZEOF(.fb1_phys) <= 737280, "fb1_phys exceeds 720 KiB")
+  ASSERT(SIZEOF(.fb1_phys) <= 393216, "fb1_phys exceeds 384 KiB")
 
   /* NemaGFX pool: SRAM3, 256 KiB window */
   .nemagfx_pool (NOLOAD) :

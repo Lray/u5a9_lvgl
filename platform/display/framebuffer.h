@@ -12,8 +12,8 @@ extern "C" {
 #define FB_LOGICAL_HEIGHT 480UL
 #define FB_STRIDE_BYTES 3072UL
 
-extern uint32_t m_fb0_phys[];
-extern uint32_t m_fb1_phys[];
+extern uint16_t m_fb0_phys[];
+extern uint16_t m_fb1_phys[];
 
 extern volatile uint32_t g_fb_swap_submit_seq;
 extern volatile uint32_t g_fb_reload_done_seq;

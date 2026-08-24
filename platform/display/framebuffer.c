@@ -2,8 +2,8 @@
 #include <string.h>
 #include "ltdc.h"
 
-uint32_t m_fb0_phys[184320] __attribute__((section(".fb0_phys"), aligned(16)));
-uint32_t m_fb1_phys[184320] __attribute__((section(".fb1_phys"), aligned(16)));
+uint16_t m_fb0_phys[196608] __attribute__((section(".fb0_phys"), aligned(16)));
+uint16_t m_fb1_phys[196608] __attribute__((section(".fb1_phys"), aligned(16)));
 
 volatile uint32_t g_fb_swap_submit_seq;
 volatile uint32_t g_fb_reload_done_seq;
@@ -15,12 +15,12 @@ volatile uint32_t g_fb_submit_ts[8];
 volatile uint32_t g_fb_done_ts[8];
 static uint32_t m_ts_idx;
 
-#define FB_ARGB_BYTES 737280UL
+#define FB_RGB565_BYTES 393216UL
 
 void FB_Init(void)
 {
-  memset(m_fb0_phys, 0, FB_ARGB_BYTES);
-  memset(m_fb1_phys, 0, FB_ARGB_BYTES);
+  memset(m_fb0_phys, 0, FB_RGB565_BYTES);
+  memset(m_fb1_phys, 0, FB_RGB565_BYTES);
 
   g_fb_front_virtual = FB_VIRT_BUFFER1;
   g_fb_back_virtual = FB_VIRT_BUFFER0;

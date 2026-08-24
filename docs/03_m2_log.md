@@ -76,6 +76,20 @@ Diagnostic addition: `Board_LCD_VerifyMapping` (mapping self-test, 3/3 pass) run
 
 First double-buffer build hard-faulted at boot: `fill_rect` had been switched to the dynamic back-buffer pointer, but the panel-bring-up clear-screen call runs before `FB_Init` — pointer still 0 → write to 0x0 → HardFault (symptoms: line-events and register snapshot all zero). Fixed by `fill_rect_at(base,...)` + keep clear-screen on the constant buffer0 base + `FB_Init()` moved before `Board_LCD_BringUp()`.
 
+## M2-A — RGB565 framebuffer + imported RGB565 LUT PASSED (probe-driven)
+
+LTDC switched to `LTDC_PIXEL_FORMAT_RGB565` with `ImageWidth 1536` (stride 3072 B unchanged), framebuffer copied as 16-bit RGB565 (R 0xF800 / G 0x07E0 / B 0x001F), drawing/gradient values converted, DSI RGB888 profile and all timings untouched. `FB0/FB1` tightened to 384 KiB each in the formal linker (RGB565 footprint 370,256 B + slack; ARGB 720-KiB note kept in header comment). The imported RGB565 LUT (`Inc/gfxmmu_lut.h`, CubeMX LUT import) is now the active LUT — BSP ARGB table no longer referenced by board_lcd (declaration-only `extern`, single strong definition from `Src/gfxmmu.c`; double-include link error resolved).
+
+| Check | Result |
+|---|---|
+| Mapping verify | **3/3**: in-circle (240,240) readback = 0x07E0 written; out-circle (row 0, x=200) virtual readback = **0xFF000000** default; physical addr 0x2002D3E0 (compact 370,256-B footprint) |
+| swap submit/done | 104 == 104, pending 0, errors 0 after settle |
+| Frame rate | 78.47 Hz (period 2,038,969 cyc), ±1 % |
+| Errors | DSI=1 boot baseline, LTDC=0 |
+| Build | 0 errors 0 warnings; FB0/FB1 384 KiB each; FLASH 260,188 B |
+
+Board-visible: RGB565 red/green/blue/white/black + checkerboard, 100 red(0xF800)/blue(0x001F) swaps at 2/s, double-buffered bar/ramp soak.
+
 ## Open items
 
 - M2 step 2 (double-buffer VBlank swap): see above — done; visual confirmation of red/blue + soak by user pending.
