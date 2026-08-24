@@ -52,7 +52,7 @@ set(LV_BUILD_CONF_PATH ${CMAKE_CURRENT_SOURCE_DIR}/config/lv_conf.h CACHE PATH "
 set(CONFIG_LV_BUILD_DEMOS OFF CACHE BOOL "" FORCE)
 set(CONFIG_LV_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CONFIG_LV_USE_THORVG_INTERNAL OFF CACHE BOOL "" FORCE)
-add_subdirectory(Middlewares/Third_Party/LVGL)
+add_subdirectory(ThirdParty/LVGL)
 
 # LV_OS_FREERTOS needs kernel headers inside lvgl TUs (lv_freertos.h)
 target_include_directories(lvgl PUBLIC

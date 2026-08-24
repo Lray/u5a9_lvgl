@@ -17,7 +17,7 @@
 | `stm32u5x9j-dk-bsp/stm32u5x9j_discovery_hspi.c/.h`、`..._ospi.c/.h`、`..._ts.c/.h` | 目标 BSP 实际提供 APS512XX HSPI PSRAM、MX25UM51245G OSPI NOR、Sitronix 触摸 API |
 | `STM32CubeU5/Projects/STM32U5x9J-DK/Examples/DSI/DSI_VideoMode_SingleBuffer/` | 已验证 DSI video mode 的时钟树、管脚和启动顺序；当前 `main.c/.ioc` 实际未初始化 GFXMMU，因此只作为 DSI/LTDC/时钟基线 |
 | `lv_port_riverdi_stm32u5/Core/Src/gpu2d.c`、`dma2d.c`、`icache.c`、`dcache.c`、`lvgl_port_display.c`、`app_freertos.c` | `HAL_GPU2D_Init()`、`HAL_DMA2D_Init()`、Cache 和双缓冲接入风格；LCD 时序、LTDC 管脚和 framebuffer 地址不复用 |
-| 本工程 `Middlewares/Third_Party/LVGL/`（按官方指南 vendor 的 v9.3.0 发布树）及 [LVGL 官方 STM32 HAL 集成指南](https://docs.lvgl.io/master/integration/chip_vendors/stm32/add_lvgl_to_your_stm32_project.html)、[Integration Overview](https://docs.lvgl.io/master/integration/overview.html) | 接入方式（复制发布源码、`LV_BUILD_CONF_PATH` 指向 `config/lv_conf.h`、tick/display 初始化）、NeoChrom/DMA2D draw unit、ST LTDC direct driver、profiler tag、direct 双缓冲同步复制和 stride API 的真实实现；Riverdi 克隆仅作只读参考 |
+| 本工程 `ThirdParty/LVGL/`（按官方指南 vendor 的 v9.3.0 发布树）及 [LVGL 官方 STM32 HAL 集成指南](https://docs.lvgl.io/master/integration/chip_vendors/stm32/add_lvgl_to_your_stm32_project.html)、[Integration Overview](https://docs.lvgl.io/master/integration/overview.html) | 接入方式（复制发布源码、`LV_BUILD_CONF_PATH` 指向 `config/lv_conf.h`、tick/display 初始化）、NeoChrom/DMA2D draw unit、ST LTDC direct driver、profiler tag、direct 双缓冲同步复制和 stride API 的真实实现；Riverdi 克隆仅作只读参考 |
 | 本工程 `Middlewares/Third_Party/FreeRTOS/Source/`（CubeMX X-CUBE-FREERTOS 1.3.1 生成） | FreeRTOS Kernel **V10.6.2**、GCC `ARM_CM33_NTZ/non_secure` port、`CMSIS_RTOS_V2` wrapper、`heap_4`；SVC/PendSV 来自 `portasm.c`、SysTick 来自 `CMSIS_RTOS_V2/cmsis_os2.c`（wrapper 单一强定义，map 已复核；2026-08-23 M1 记录更正原 `port.c` 表述） |
 
 官方在线依据：[RM0456](https://www.st.com/resource/en/reference_manual/rm0456-stm32u5-series-armbased-32bit-mcus-stmicroelectronics.pdf)、[UM2967](https://www.st.com/resource/en/user_manual/um2967-discovery-kits-with-stm32u5x9nj-mcus-stmicroelectronics.pdf)。实现时以仓库锁定版本中的头文件原型为准，本文不虚构 HAL/BSP/NemaGFX 调用。
@@ -26,7 +26,7 @@
 
 | 冲突 | 代码/文档证据 | 规划处理 |
 |---|---|---|
-| “LVGL 锁定 v9.2”与硬件加速目标冲突 | 当前磁盘工作树是 commit `40fb6ba26`（版本头为 `9.6.0-dev`），三个目录都存在。这里的版本差异结论来自对同一 Git 仓库 **`v9.2.2` 标签快照**执行 `git ls-tree`/`git grep`：该标签不含 `src/draw/nema_gfx`、`src/draw/dma2d`、`src/drivers/display/st_ltdc` 和 `lv_display_set_buffers_with_stride()`；`v9.3.0` 标签包含它们 | **已解决：用户确认目标工程锁定 `v9.3.0`，本地标签解引用后的 commit 为 `c033a98afddd65aaafeebea625382a94020fe4a7`。** 已按官方指南把 v9.3.0 发布树 vendor 进 `Middlewares/Third_Party/LVGL/`，`lv_version.h` 校验为 9.3.0；不把当前 9.6.0-dev 工作树误当作 v9.2.2，也不规划 v9.2 回移 |
+| “LVGL 锁定 v9.2”与硬件加速目标冲突 | 当前磁盘工作树是 commit `40fb6ba26`（版本头为 `9.6.0-dev`），三个目录都存在。这里的版本差异结论来自对同一 Git 仓库 **`v9.2.2` 标签快照**执行 `git ls-tree`/`git grep`：该标签不含 `src/draw/nema_gfx`、`src/draw/dma2d`、`src/drivers/display/st_ltdc` 和 `lv_display_set_buffers_with_stride()`；`v9.3.0` 标签包含它们 | **已解决：用户确认目标工程锁定 `v9.3.0`，本地标签解引用后的 commit 为 `c033a98afddd65aaafeebea625382a94020fe4a7`。** 已按官方指南把 v9.3.0 发布树 vendor 进 `ThirdParty/LVGL/`，`lv_version.h` 校验为 9.3.0；不把当前 9.6.0-dev 工作树误当作 v9.2.2，也不规划 v9.2 回移 |
 | 既定 RGB565 与 BSP LUT 冲突 | 目标 BSP 的 LUT 名称和 LTDC 配置均为 ARGB8888；其物理缓冲为 184320×4 B = 720 KiB | M2 先复现 BSP ARGB8888 GFXMMU，再生成并验证 RGB565 LUT；RGB565 物理大小在 LUT 验证前标记为暂定 |
 | RGB565 framebuffer 与 DSI 线上格式被混为一谈 | BSP 是 ARGB8888 layer → LTDC PFC/24-bit RGB bus → DSI RGB888，并非 32-bit 数据原样上 DSI；RM0456 §43.2/§43.4.2 明确允许 LTDC layer 输入 RGB565并扩展为内部 8-bit RGB，§44.4.4/§44.5 允许 DSI Wrapper 选择 16/18/24-bit color coding | M2-A 先验证 RGB565 framebuffer → DSI RGB888；M2-B 再独立验证 DSI RGB565，避免同时改变 LUT、LTDC layer、DSI packet 与 panel 接收格式 |
 | 任务中的 PSRAM/触摸器件与板卡资料冲突 | UM2967 Rev.5 与本地 BSP 均指向 512-Mbit APS512XX、HSPI1、映射基址 `0xA0000000`，触摸 BSP 指向 Sitronix；不是 APS256XX/GT911 | **已解决：STM32U5A9J-DK 与本地 `stm32u5x9j-dk-bsp` 均按 APS512XX + Sitronix 规划。** 原任务描述中的 APS256XX/GT911 作废 |
@@ -475,7 +475,7 @@ cmake -S . -B build && cmake --build build
 
 - `u5a9_lvgl.ioc`、`CMakeLists.txt`、`CMakePresets.json`、`cmake/*`
 - CubeMX生成的 `Inc/*`、`Src/*`、`Drivers/*`，其中包括TIM2 `stm32u5xx_hal_timebase_tim.c`；`stm32u5xx_it.c`不得保留SVC/PendSV/SysTick定义
-- `Middlewares/Third_Party/FreeRTOS/*`（X-CUBE-FREERTOS 生成）、`Middlewares/Third_Party/LVGL/*`（v9.3.0 vendor 树）、`config/lv_conf.h`
+- `Middlewares/Third_Party/FreeRTOS/*`（X-CUBE-FREERTOS 生成）、`ThirdParty/LVGL/*`（v9.3.0 vendor 树）、`config/lv_conf.h`
 - `Inc/FreeRTOSConfig.h`、`Src/app_freertos.c`（lvgl task 循环与两个 hook）、`platform/os/freertos_runtime_stats.*`[待建]、基础 linker 脚本
 - `docs/01_bringup_log.md`
 
@@ -578,7 +578,7 @@ cmake -S . -B build && cmake --build build
 
 **预计改动文件**
 
-- `Middlewares/Third_Party/LVGL` vendor 树（校验与上游 v9.3.0 无 diff；M3 不改源码）
+- `ThirdParty/LVGL` vendor 树（校验与上游 v9.3.0 无 diff；M3 不改源码）
 - `config/lv_conf.h`、`platform/display/lv_port_display.*`
 - `platform/os/lvgl_task.*`、`app_queues.*`
 - `platform/perf/perf_clock.*`、`perf_gpio.*`
@@ -741,7 +741,7 @@ cmake -S . -B build && cmake --build build
 
 1. 一轮只实现一个里程碑；先复述该里程碑验收条件，再改文件。
 2. 每个 HAL/BSP/NemaGFX 调用在提交说明中列出原型来源路径；找不到原型立即停止并进入开放问题。
-3. 不修改 LVGL vendor 树，不携带任何 LVGL 补丁；每轮校验 `Middlewares/Third_Party/LVGL` 与上游 v9.3.0 无 diff。集成行为一律经官方配置项（`lv_conf.h`/`LV_BUILD_*`）实现；确需新语义时走官方版本升级路线并重新评审。v9.3 profiler tag 已足够做第一版分类统计。
+3. 不修改 LVGL vendor 树，不携带任何 LVGL 补丁；每轮校验 `ThirdParty/LVGL` 与上游 v9.3.0 无 diff。集成行为一律经官方配置项（`lv_conf.h`/`LV_BUILD_*`）实现；确需新语义时走官方版本升级路线并重新评审。v9.3 profiler tag 已足够做第一版分类统计。
 4. 每轮都执行固定 CMake 命令，并报告 warning/error 数、ELF/map/size；未跑通不交付上板步骤。
 5. 每轮上板只执行该里程碑列出的步骤，日志带 build id、板卡版本、配置 profile。
 6. 现实与本计划冲突时，先更新本文对应事实、内存表、风险或里程碑，再继续实现；不静默偏离。
