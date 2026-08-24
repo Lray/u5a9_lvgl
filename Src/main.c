@@ -21,6 +21,7 @@
 #include "cmsis_os2.h"
 #include "dma2d.h"
 #include "dsihost.h"
+#include "gfxmmu.h"
 #include "icache.h"
 #include "ltdc.h"
 #include "gpio.h"
@@ -104,6 +105,7 @@ int main(void)
   MX_ICACHE_Init();
   MX_DSIHOST_DSI_Init();
   MX_LTDC_Init();
+  MX_GFXMMU_Init();
   /* USER CODE BEGIN 2 */
   if (Board_LCD_BringUp() != HAL_OK)
   {

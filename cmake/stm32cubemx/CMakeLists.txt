@@ -28,6 +28,7 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/app_freertos.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/dma2d.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/dsihost.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/gfxmmu.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/icache.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/ltdc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/stm32u5xx_it.c
@@ -61,6 +62,7 @@ set(STM32_Drivers_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_gtzc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_icache.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_dsi.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_gfxmmu.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_ltdc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_ltdc_ex.c
 )

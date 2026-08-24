@@ -118,13 +118,6 @@ void MX_DSIHOST_DSI_Init(void)
   VidCfg.LPVerticalFrontPorchEnable = DSI_LP_VFP_ENABLE;
   VidCfg.LPVerticalBackPorchEnable = DSI_LP_VBP_ENABLE;
   VidCfg.LPVerticalSyncActiveEnable = DSI_LP_VSYNC_ENABLE;
-  VidCfg.LPVACTLargestPacketSize = 0;
-  VidCfg.LPHorizontalFrontPorchEnable = DSI_LP_HFP_ENABLE;
-  VidCfg.LPHorizontalBackPorchEnable = DSI_LP_HBP_ENABLE;
-  VidCfg.LPVerticalActiveEnable = DSI_LP_VACT_ENABLE;
-  VidCfg.LPVerticalFrontPorchEnable = DSI_LP_VFP_ENABLE;
-  VidCfg.LPVerticalBackPorchEnable = DSI_LP_VBP_ENABLE;
-  VidCfg.LPVerticalSyncActiveEnable = DSI_LP_VSYNC_ENABLE;
   VidCfg.FrameBTAAcknowledgeEnable = DSI_FBTAA_ENABLE;
   if (HAL_DSI_ConfigVideoMode(&hdsi, &VidCfg) != HAL_OK)
   {
