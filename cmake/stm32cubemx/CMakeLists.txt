@@ -29,6 +29,7 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/dma2d.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/dsihost.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/gfxmmu.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/gpu2d.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/icache.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/ltdc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Src/stm32u5xx_it.c
@@ -54,6 +55,7 @@ set(STM32_Drivers_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_flash.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_flash_ex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_gpio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_gpu2d.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_dma.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_dma_ex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_exti.c

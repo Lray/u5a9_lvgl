@@ -229,4 +229,16 @@ void GFXMMU_IRQHandler(void)
 {
   HAL_GFXMMU_IRQHandler(&hgfxmmu);
 }
+
+void GPU2D_IRQHandler(void)
+{
+  extern GPU2D_HandleTypeDef hgpu2d;
+  HAL_GPU2D_IRQHandler(&hgpu2d);
+}
+
+void GPU2D_ER_IRQHandler(void)
+{
+  extern GPU2D_HandleTypeDef hgpu2d;
+  HAL_GPU2D_ER_IRQHandler(&hgpu2d);
+}
 /* USER CODE END 1 */

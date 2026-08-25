@@ -131,6 +131,21 @@ SECTIONS
   ASSERT(ADDR(.freertos_heap) == 0x20150000, "freertos_heap not at 0x20150000")
   ASSERT(SIZEOF(.freertos_heap) <= 131072, "freertos_heap exceeds 128 KiB")
 
+  /* NemaGFX pool: SRAM3, 256 KiB window (vendor static pool section must be
+     captured before the generic RUNCTX .bss rule; plan §6.4 object-specific
+     placement, no LVGL source edit) */
+  .nemagfx_pool (NOLOAD) :
+  {
+    . = ALIGN(16);
+    __nemagfx_pool_start__ = .;
+    KEEP(*(.bss.nemagfx_pool_mem*))
+    KEEP(*(.nemagfx_pool))
+    . = ALIGN(4);
+    __nemagfx_pool_end__ = .;
+  } >NEMAGFX
+  ASSERT(ADDR(.nemagfx_pool) == 0x200D0000, "nemagfx_pool not at 0x200D0000")
+  ASSERT(SIZEOF(.nemagfx_pool) <= 262144, "nemagfx_pool exceeds 256 KiB")
+
   /* Used by the startup to initialize data */
   _sidata = LOADADDR(.data);
 
@@ -243,18 +258,6 @@ SECTIONS
   } >SRAM5
   ASSERT(ADDR(.fb1_phys) == 0x201A0000, "fb1_phys not at 0x201A0000")
   ASSERT(SIZEOF(.fb1_phys) <= 393216, "fb1_phys exceeds 384 KiB")
-
-  /* NemaGFX pool: SRAM3, 256 KiB window */
-  .nemagfx_pool (NOLOAD) :
-  {
-    . = ALIGN(16);
-    __nemagfx_pool_start__ = .;
-    KEEP(*(.nemagfx_pool))
-    . = ALIGN(4);
-    __nemagfx_pool_end__ = .;
-  } >NEMAGFX
-  ASSERT(ADDR(.nemagfx_pool) == 0x200D0000, "nemagfx_pool not at 0x200D0000")
-  ASSERT(SIZEOF(.nemagfx_pool) <= 262144, "nemagfx_pool exceeds 256 KiB")
 
   /* DMA staging: SRAM2, 32 KiB, non-cacheable */
   .dma_nocache (NOLOAD) :

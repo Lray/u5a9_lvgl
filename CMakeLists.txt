@@ -50,6 +50,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     platform/os/freertos_runtime_stats.c
     platform/perf/perf_profiler.c
     platform/perf/perf_gpio.c
+    platform/graphics/lv_draw_dma2d_u5.c
 )
 
 # LVGL v9.3.0 (official release tree, configured via config/lv_conf.h)
@@ -59,19 +60,32 @@ set(CONFIG_LV_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CONFIG_LV_USE_THORVG_INTERNAL OFF CACHE BOOL "" FORCE)
 add_subdirectory(ThirdParty/LVGL)
 
-# LV_OS_FREERTOS needs kernel headers inside lvgl TUs (lv_freertos.h)
+# LV_OS_FREERTOS needs kernel headers inside lvgl TUs (lv_freertos.h);
+# Nema STM32 HAL glue needs the device HAL headers
 target_include_directories(lvgl PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Inc
     ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS/Source/include
     ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM33_NTZ/non_secure
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/perf
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/libs/nema_gfx/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32U5xx_HAL_Driver/Inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32U5xx_HAL_Driver/Inc/Legacy
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32U5xx/Include
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Include
 )
+target_compile_definitions(lvgl PUBLIC STM32U5A9xx USE_HAL_DRIVER)
+
+# NemaGFX precompiled library (cortex_m33_revC, hard-float; plan §7 M4)
+set(NEMA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/libs/nema_gfx/lib/core/cortex_m33_revC/gcc/libnemagfx-float-abi-hard.a)
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/display
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/perf
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/os
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/graphics
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/src
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/STM32U5x9J-DK
 )
 
@@ -89,10 +103,15 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
 # Remove wrong libob.a library dependency when using cpp files
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
-# Add linked libraries
+# Add linked libraries (--group: lvgl and the precompiled NemaGFX library
+# reference each other; single-pass archive scan would miss the back-references)
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
+    -Wl,--start-group
     lvgl::lvgl
+    ${NEMA_LIB}
+    m
+    -Wl,--end-group
 
     # Add user defined libraries
 )

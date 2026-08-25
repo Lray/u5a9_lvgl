@@ -30,6 +30,7 @@
 /* USER CODE BEGIN Includes */
 #include "board_lcd.h"
 #include "framebuffer.h"
+#include "gpu2d.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -108,6 +109,7 @@ int main(void)
   MX_LTDC_Init();
   MX_GFXMMU_Init();
   /* USER CODE BEGIN 2 */
+  MX_GPU2D_Init();
   FB_Init();
   if (Board_LCD_BringUp() != HAL_OK)
   {

@@ -26,6 +26,7 @@
 #include "FreeRTOS.h"
 #include "lvgl.h"
 #include "lv_port_display.h"
+#include "lv_draw_dma2d_u5.h"
 #include "perf_profiler.h"
 #include "framebuffer.h"
 #include "board_lcd.h"
@@ -172,24 +173,34 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN defaultTask */
   lv_init();
   lv_tick_set_cb(xTaskGetTickCount);
+  lv_draw_dma2d_u5_init(); /* project unit: register after lv_init(), before display/tasks (plan §5.1) */
   lv_port_display_create();
+
+  {
+    /* DMA2D R2M machinery self-test: 64x64 solid green block at (0,0) of the
+     * current back buffer, read back after poll, counter attests the result */
+    extern void u5_dma2d_selftest(void);
+    u5_dma2d_selftest();
+  }
 
   {
     lv_obj_t * scr = lv_screen_active();
     lv_obj_set_style_bg_color(scr, lv_color_hex(0x101010), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(scr, 0, 0);
+    lv_obj_set_style_radius(scr, 0, 0);
 
     s_rect = lv_obj_create(scr);
+    lv_obj_remove_style_all(s_rect);
     lv_obj_set_size(s_rect, 140, 140);
     lv_obj_set_style_bg_color(s_rect, lv_color_hex(0xC00000), 0);
     lv_obj_set_style_bg_opa(s_rect, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(s_rect, 0, 0);
 
     s_alpha = lv_obj_create(scr);
+    lv_obj_remove_style_all(s_alpha);
     lv_obj_set_size(s_alpha, 120, 120);
     lv_obj_set_style_bg_color(s_alpha, lv_color_hex(0x0070E0), 0);
     lv_obj_set_style_bg_opa(s_alpha, LV_OPA_50, 0);
-    lv_obj_set_style_border_width(s_alpha, 0, 0);
 
     s_label = lv_label_create(scr);
     lv_label_set_text(s_label, "LVGL 9.3.0 direct 480x480 stride3072 M3");

@@ -346,9 +346,9 @@ GFXMMU 还有独立的 3-line、16-byte-line data cache。RM0456 §21.4.3 明确
 
 | 绘制类型 | 默认单元 | 说明 |
 |---|---|---|
-| 纯色矩形、无圆角/渐变的 fill | 项目 U5 HAL DMA2D draw unit | 只覆盖已逐项实现和验证的模式；同步等待完成/错误后才 READY |
-| 无旋转/缩放的变量图片、支持格式的 blit/PFC、简单 alpha | 项目 U5 HAL DMA2D draw unit | 不支持时由 evaluate 留给 Nema/SW；业务代码不直接硬选 HAL |
-| 图片 rotate/scale、纹理采样、受支持 alpha/layer | NemaGFX/NeoChrom | 只承诺 v9.3 evaluate 和上板用例验证的能力；不把图片变换泛化成任意 matrix/vector |
+| **根层**（GFXMMU 3072-B stride 显示缓冲）纯色无圆角/渐变 fill、blit、PFC | **SW draw unit** | **2026-08-25 事实修订**：U5A9 GFXMMU 只转换 LTDC/GPU2D 等图形 master 访问；DMA2D 对 0x24000000 虚拟窗为死写（板上单测证据）。根层只能 SW（CPU 经虚拟地址，M2/M3 已验证）；项目 DMA2D 与 Nema 均只服务连续离屏层缓冲 |
+| 无旋转/缩放的变量图片、支持格式的 blit/PFC、简单 alpha（**离屏层缓冲**） | 项目 U5 HAL DMA2D draw unit | 只覆盖已逐项实现和验证的模式；同步等待完成/错误后才 READY；ID5/score20/50-ms poll/超时 abort+re-init+任务留 WAITING |
+| 图片 rotate/scale、纹理采样、受支持 alpha/layer（**离屏层缓冲**） | NemaGFX/NeoChrom | 只承诺 v9.3 evaluate 和上板用例验证的能力；不把图片变换泛化成任意 matrix/vector；⚠ vendor 单元 960-B pitch 硬编码 → 只用于连续层缓冲，不可用于根层 |
 | NemaVG arc/triangle/label 等 primitive | NemaGFX，能力不足则 SW | 是否开启及结果容差由 M4逐项门控；通用 vector/path 不在未验证能力表内 |
 | framebuffer swap | display port | flush callback 不做全帧 DMA2D copy；frame fence 后提交单一 pending VBlank reload；LVGL core 的局部 sync copy 单列统计 |
 
@@ -605,6 +605,8 @@ cmake -S . -B build && cmake --build build
 - 退回 M2 的纯 framebuffer pattern；若只在 LVGL 出错，先用单 buffer + SW 诊断，再恢复 DIRECT double。若实际锁定 tag 的 stride/direct API或同步复制行为与审查不符，停下更新本文和版本闸门，不写私有假 API，也不启用 stock ST LTDC绕过问题。
 
 ### M4：NeoChrom + DMA2D、Cache 一致性与串行路由
+
+> 执行状态：**进行中（2026-08-25，阶段性成果已提交）**。Step A：NeoChrom 集成完成——GPU2D HAL 驱动+`Src/gpu2d.c`（SRAMCACHED 清读=0、DCACHE2 时钟不启用、优先级 5）、Nema 预编译库（M33/Thumb/hard-float，hash 已录）以 `--start-group` 链接、`.nemagfx_pool` 以对象段放置 240,640 B@0x200D0000 精确命中公式；上板证实 **vendor Nema 单元固定 960-B pitch 与 GFXMMU 3072-B stride 根层不兼容**（竖带噪点，已回退 LV_USE_NEMA_GFX=0，GPU2D 初始化保留）。**硬件事实（§9.6 修订）**：U5A9 GFXMMU 只转换 LTDC/GPU2D 图形 master 的访问——DMA2D 写入 0x24000000 虚拟窗为死写（板上 R2M+SAM 单测：SRAM 全正确、虚拟/物理回读均无），故**项目 DMA2D draw unit（ID5/score20/50ms poll/超时 abort+re-init+任务留 WAITING）不能承接根层**，已加目标范围门，职责改为连续离屏层缓冲（transform 阶段）；根层=SW。证据见 [05_m4_log.md](05_m4_log.md)。
 
 **目标**
 
