@@ -571,6 +571,8 @@ cmake -S . -B build && cmake --build build
 
 ### M3：FreeRTOS + LVGL software direct-render 双缓冲
 
+> 执行状态：**已通过（2026-08-25）**。stride-aware DIRECT display port 接入 GFXMMU virtual 0/1（`lv_display_set_buffers_with_stride`，buf_size=1,474,560、stride=3072）；swap 仅在本帧最后一块 flush 提交（对齐 stock `lv_st_ltdc.c`，修复中途 VBlank 部分暴露闪烁）；LVGL heap 256 KiB（LVGLH）/FreeRTOS heap 128 KiB app-allocated（RTOSHEAP）落地；runtime stats 64-bit provider 启用；项目 profiler backend 落 `.perf_trace`。上板：合成场景两阶段 est 趋势符合（全屏=0、局部≈1.2 MB/s）、连续运行门限按用户决定降为 **10 min**（实际证据 11.08 min 无复位，错误零新增，78.50 Hz ±1 %）、复位 20/20 通过（不变式、错误、LUT 自检、反向注册全部保持）。证据见 [04_m3_log.md](04_m3_log.md)。后续里程碑连续验收时长一律 10 min。
+
 **目标**
 
 - 接入锁定的 LVGL `v9.3.0`：逻辑分辨率 480×480，两个 draw buffer 指向 GFXMMU virtual buffer 0/1；调用该版本真实的 `lv_display_set_buffers_with_stride()`，`buf_size=3072*480=1,474,560 B`、stride=3072 B、render mode 只用 `LV_DISPLAY_RENDER_MODE_DIRECT`，不能写成 FULL，也不能把压缩物理 footprint 当作 LVGL buffer size。

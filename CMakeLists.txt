@@ -46,6 +46,10 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     platform/display/board_lcd.c
     platform/display/framebuffer.c
+    platform/display/lv_port_display.c
+    platform/os/freertos_runtime_stats.c
+    platform/perf/perf_profiler.c
+    platform/perf/perf_gpio.c
 )
 
 # LVGL v9.3.0 (official release tree, configured via config/lv_conf.h)
@@ -60,13 +64,22 @@ target_include_directories(lvgl PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Inc
     ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS/Source/include
     ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM33_NTZ/non_secure
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/perf
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/display
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/perf
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/os
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/STM32U5x9J-DK
 )
+
+# Optional perf probe module (plan §5.2: default off, never in acceptance)
+option(PERF_GPIO_EN "Optional perf GPIO probe module" OFF)
+if(PERF_GPIO_EN)
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE PERF_GPIO_EN=1)
+endif()
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE

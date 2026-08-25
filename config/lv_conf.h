@@ -69,7 +69,7 @@
 
 #if LV_USE_STDLIB_MALLOC == LV_STDLIB_BUILTIN
     /** Size of memory available for `lv_malloc()` in bytes (>= 2kB) */
-    #define LV_MEM_SIZE (64 * 1024U)          /**< [bytes] */
+    #define LV_MEM_SIZE (256 * 1024U)         /**< [bytes] */
 
     /** Size of the memory expand for `lv_malloc()` in bytes */
     #define LV_MEM_POOL_EXPAND_SIZE 0
@@ -126,10 +126,10 @@
  *========================*/
 
 /** Align stride of all layers and images to this bytes */
-#define LV_DRAW_BUF_STRIDE_ALIGN                1
+#define LV_DRAW_BUF_STRIDE_ALIGN                16
 
 /** Align start address of draw_buf addresses to this bytes*/
-#define LV_DRAW_BUF_ALIGN                       4
+#define LV_DRAW_BUF_ALIGN                       16
 
 /** Using matrix for transformations.
  * Requirements:
@@ -1007,14 +1007,14 @@
 #define LV_USE_SNAPSHOT 0
 
 /** 1: Enable system monitor component */
-#define LV_USE_SYSMON   0
+#define LV_USE_SYSMON   1
 #if LV_USE_SYSMON
     /** Get the idle percentage. E.g. uint32_t my_get_idle(void); */
     #define LV_SYSMON_GET_IDLE lv_os_get_idle_percent
 
     /** 1: Show CPU usage and FPS count.
      *  - Requires `LV_USE_SYSMON = 1` */
-    #define LV_USE_PERF_MONITOR 0
+    #define LV_USE_PERF_MONITOR 1
     #if LV_USE_PERF_MONITOR
         #define LV_USE_PERF_MONITOR_POS LV_ALIGN_BOTTOM_RIGHT
 
@@ -1032,10 +1032,10 @@
 #endif /*LV_USE_SYSMON*/
 
 /** 1: Enable runtime performance profiler */
-#define LV_USE_PROFILER 0
+#define LV_USE_PROFILER 1
 #if LV_USE_PROFILER
     /** 1: Enable the built-in profiler */
-    #define LV_USE_PROFILER_BUILTIN 1
+    #define LV_USE_PROFILER_BUILTIN 0
     #if LV_USE_PROFILER_BUILTIN
         /** Default profiler trace buffer size */
         #define LV_PROFILER_BUILTIN_BUF_SIZE (16 * 1024)     /**< [bytes] */
@@ -1043,52 +1043,52 @@
     #endif
 
     /** Header to include for profiler */
-    #define LV_PROFILER_INCLUDE "lvgl/src/misc/lv_profiler_builtin.h"
+    #define LV_PROFILER_INCLUDE "lv_profiler_backend.h"
 
     /** Profiler start point function */
-    #define LV_PROFILER_BEGIN    LV_PROFILER_BUILTIN_BEGIN
+    #define LV_PROFILER_BEGIN    LV_PROFILER_BACKEND_BEGIN
 
     /** Profiler end point function */
-    #define LV_PROFILER_END      LV_PROFILER_BUILTIN_END
+    #define LV_PROFILER_END      LV_PROFILER_BACKEND_END
 
     /** Profiler start point function with custom tag */
-    #define LV_PROFILER_BEGIN_TAG LV_PROFILER_BUILTIN_BEGIN_TAG
+    #define LV_PROFILER_BEGIN_TAG LV_PROFILER_BACKEND_BEGIN_TAG
 
     /** Profiler end point function with custom tag */
-    #define LV_PROFILER_END_TAG   LV_PROFILER_BUILTIN_END_TAG
+    #define LV_PROFILER_END_TAG   LV_PROFILER_BACKEND_END_TAG
 
     /*Enable layout profiler*/
-    #define LV_PROFILER_LAYOUT 1
+    #define LV_PROFILER_LAYOUT 0
 
     /*Enable disp refr profiler*/
     #define LV_PROFILER_REFR 1
 
     /*Enable draw profiler*/
-    #define LV_PROFILER_DRAW 1
+    #define LV_PROFILER_DRAW 0
 
     /*Enable indev profiler*/
-    #define LV_PROFILER_INDEV 1
+    #define LV_PROFILER_INDEV 0
 
     /*Enable decoder profiler*/
-    #define LV_PROFILER_DECODER 1
+    #define LV_PROFILER_DECODER 0
 
     /*Enable font profiler*/
-    #define LV_PROFILER_FONT 1
+    #define LV_PROFILER_FONT 0
 
     /*Enable fs profiler*/
-    #define LV_PROFILER_FS 1
+    #define LV_PROFILER_FS 0
 
     /*Enable style profiler*/
     #define LV_PROFILER_STYLE 0
 
     /*Enable timer profiler*/
-    #define LV_PROFILER_TIMER 1
+    #define LV_PROFILER_TIMER 0
 
     /*Enable cache profiler*/
-    #define LV_PROFILER_CACHE 1
+    #define LV_PROFILER_CACHE 0
 
     /*Enable event profiler*/
-    #define LV_PROFILER_EVENT 1
+    #define LV_PROFILER_EVENT 0
 #endif
 
 /** 1: Enable Monkey test */

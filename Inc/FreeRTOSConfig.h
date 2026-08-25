@@ -164,6 +164,22 @@ header file. */
 
 /* USER CODE BEGIN Defines */
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
+#define configAPPLICATION_ALLOCATED_HEAP             1
+#undef configTOTAL_HEAP_SIZE
+#define configTOTAL_HEAP_SIZE                        ((size_t)131072)
+#undef configRUN_TIME_COUNTER_TYPE
+#define configRUN_TIME_COUNTER_TYPE                  uint64_t
+#define configGENERATE_RUN_TIME_STATS                1
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()     perf_runtime_stats_init()
+#define portGET_RUN_TIME_COUNTER_VALUE()             perf_runtime_counter64()
+void perf_runtime_stats_init(void);
+uint64_t perf_runtime_counter64(void);
+
+/* LVGL FreeRTOS idle-percent hooks (official LVGL FreeRTOS integration doc) */
+void lv_freertos_task_switch_in(const char * name);
+void lv_freertos_task_switch_out(void);
+#define traceTASK_SWITCHED_IN()    lv_freertos_task_switch_in(pxCurrentTCB->pcTaskName)
+#define traceTASK_SWITCHED_OUT()   lv_freertos_task_switch_out()
 /* USER CODE END Defines */
 
 #endif /* __FREERTOS_CONFIG_H */

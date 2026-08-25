@@ -105,6 +105,32 @@ SECTIONS
     PROVIDE_HIDDEN (__fini_array_end = .);
   } >FLASH
 
+  /* LVGL memory pool: SRAM3, 256 KiB window (work_mem_int section must be
+     captured before the generic RUNCTX .bss rule) */
+  .lvgl_heap (NOLOAD) :
+  {
+    . = ALIGN(16);
+    __lvgl_heap_start__ = .;
+    KEEP(*(.bss.work_mem_int*))
+    KEEP(*(.lvgl_heap))
+    . = ALIGN(4);
+    __lvgl_heap_end__ = .;
+  } >LVGLH
+  ASSERT(ADDR(.lvgl_heap) == 0x20110000, "lvgl_heap not at 0x20110000")
+  ASSERT(SIZEOF(.lvgl_heap) <= 262144, "lvgl_heap exceeds 256 KiB")
+
+  /* FreeRTOS heap: SRAM3, 128 KiB window */
+  .freertos_heap (NOLOAD) :
+  {
+    . = ALIGN(16);
+    __freertos_heap_start__ = .;
+    KEEP(*(.freertos_heap))
+    . = ALIGN(4);
+    __freertos_heap_end__ = .;
+  } >RTOSHEAP
+  ASSERT(ADDR(.freertos_heap) == 0x20150000, "freertos_heap not at 0x20150000")
+  ASSERT(SIZEOF(.freertos_heap) <= 131072, "freertos_heap exceeds 128 KiB")
+
   /* Used by the startup to initialize data */
   _sidata = LOADADDR(.data);
 
@@ -229,30 +255,6 @@ SECTIONS
   } >NEMAGFX
   ASSERT(ADDR(.nemagfx_pool) == 0x200D0000, "nemagfx_pool not at 0x200D0000")
   ASSERT(SIZEOF(.nemagfx_pool) <= 262144, "nemagfx_pool exceeds 256 KiB")
-
-  /* LVGL heap: SRAM3, 256 KiB window */
-  .lvgl_heap (NOLOAD) :
-  {
-    . = ALIGN(16);
-    __lvgl_heap_start__ = .;
-    KEEP(*(.lvgl_heap))
-    . = ALIGN(4);
-    __lvgl_heap_end__ = .;
-  } >LVGLH
-  ASSERT(ADDR(.lvgl_heap) == 0x20110000, "lvgl_heap not at 0x20110000")
-  ASSERT(SIZEOF(.lvgl_heap) <= 262144, "lvgl_heap exceeds 256 KiB")
-
-  /* FreeRTOS heap: SRAM3, 128 KiB window */
-  .freertos_heap (NOLOAD) :
-  {
-    . = ALIGN(16);
-    __freertos_heap_start__ = .;
-    KEEP(*(.freertos_heap))
-    . = ALIGN(4);
-    __freertos_heap_end__ = .;
-  } >RTOSHEAP
-  ASSERT(ADDR(.freertos_heap) == 0x20150000, "freertos_heap not at 0x20150000")
-  ASSERT(SIZEOF(.freertos_heap) <= 131072, "freertos_heap exceeds 128 KiB")
 
   /* DMA staging: SRAM2, 32 KiB, non-cacheable */
   .dma_nocache (NOLOAD) :

@@ -113,16 +113,7 @@ int main(void)
   {
     Error_Handler();
   }
-  Board_LCD_DiagnosticPatterns();
   Board_LCD_VerifyMapping();
-  for (uint32_t i = 0U; i < 100U; i++)
-  {
-    Board_LCD_FillBack((i & 1U) ? 0x001FU : 0xF800U);
-    FB_Submit();
-    while (g_fb_swap_pending != 0U) { }
-    HAL_Delay(500U);
-  }
-  Board_LCD_SoakLoop();
   /* USER CODE END 2 */
 
   /* Init scheduler */
