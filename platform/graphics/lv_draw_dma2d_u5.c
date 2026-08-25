@@ -22,7 +22,11 @@
 
 #define PROJECT_DMA2D_UNIT_ID 5
 #define PROJECT_DMA2D_SCORE 20
+#define PROJECT_DMA2D_SHIELD_SCORE 80
 #define DMA2D_POLL_TIMEOUT_MS 50U
+
+#define GFXMMU_VIRT_BASE 0x24000000UL
+#define GFXMMU_VIRT_END  0x25000000UL
 
 typedef struct
 {
@@ -34,12 +38,38 @@ volatile uint32_t g_u5_dma2d_selftest_dump;
 
 u5_dma2d_stats_t g_u5_dma2d_stats;
 
+static uint32_t is_gfxmmu_virt(uint32_t addr)
+{
+  return (addr >= GFXMMU_VIRT_BASE && addr < GFXMMU_VIRT_END);
+}
+
+/* Dedicated route: this project unit is head-most (created last).
+ * 1) Any root-layer task is claimed here with score 80 — which blocks the
+ *    vendor Nema unit ('score > 80' guard) — and steered back to SW at
+ *    dispatch time. Root buffers are GFXMMU 3072-B stride; neither DMA2D
+ *    (dead-write evidence) nor Nema (960-B pitch vendor limit) can target it.
+ * 2) Clean fills on contiguous off-screen layer buffers are executed here via
+ *    synchronous DMA2D R2M. */
 static int32_t evaluate_cb(lv_draw_unit_t * draw_unit, lv_draw_task_t * task)
 {
   (void)draw_unit;
   const lv_draw_rect_dsc_t * dsc = (const lv_draw_rect_dsc_t *)task->draw_dsc;
 
   g_u5_dma2d_stats.evaluate_calls++;
+  if (task->target_layer == NULL || task->target_layer->draw_buf == NULL ||
+      task->target_layer->draw_buf->data == NULL) {
+    return 0;
+  }
+
+  if (is_gfxmmu_virt((uint32_t)(uintptr_t)task->target_layer->draw_buf->data)) {
+    if (task->preference_score > PROJECT_DMA2D_SHIELD_SCORE) {
+      task->preference_score = PROJECT_DMA2D_SHIELD_SCORE;
+      task->preferred_draw_unit_id = PROJECT_DMA2D_UNIT_ID;
+    }
+    g_u5_dma2d_stats.shield_count++;
+    return 1;
+  }
+
   if (task->type != LV_DRAW_TASK_TYPE_FILL) {
     g_u5_dma2d_stats.reject_type++;
     return 0;
@@ -48,30 +78,11 @@ static int32_t evaluate_cb(lv_draw_unit_t * draw_unit, lv_draw_task_t * task)
     g_u5_dma2d_stats.reject_cf++;
     return 0;
   }
-  /* U5A9 GFXMMU translates only the graphics masters' accesses (LTDC/GPU2D);
-   * DMA2D cannot reach the 0x24000000 virtual window (verified on-board).
-   * This unit therefore serves contiguous off-screen layer buffers only. */
-  {
-    uint32_t buf_addr = (uint32_t)(uintptr_t)task->target_layer->draw_buf->data;
-    if (buf_addr >= 0x24000000U && buf_addr < 0x25000000U) {
-      g_u5_dma2d_stats.reject_cf++;
-      return 0;
-    }
+  if (dsc->radius != 0 || dsc->border_width != 0 || dsc->shadow_width != 0 ||
+      dsc->bg_opa != LV_OPA_COVER || dsc->bg_grad.dir != LV_GRAD_DIR_NONE) {
+    g_u5_dma2d_stats.reject_simple++;
+    return 0;
   }
-  /* snapshot the first few rejected fills for field-level diagnosis */
-  if (g_u5_dma2d_stats.sample_idx < 4U) {
-    uint32_t i = g_u5_dma2d_stats.sample_idx;
-    g_u5_dma2d_stats.sample_radius[i] = (uint32_t)dsc->radius;
-    g_u5_dma2d_stats.sample_border[i] = (uint32_t)dsc->border_width;
-    g_u5_dma2d_stats.sample_opa[i] = dsc->bg_opa;
-    g_u5_dma2d_stats.sample_grad_dir[i] = (uint32_t)dsc->bg_grad.dir;
-    g_u5_dma2d_stats.sample_idx = i + 1U;
-  }
-  if (dsc->radius != 0) { g_u5_dma2d_stats.reject_radius++; return 0; }
-  if (dsc->border_width != 0) { g_u5_dma2d_stats.reject_border++; return 0; }
-  if (dsc->shadow_width != 0) { g_u5_dma2d_stats.reject_shadow++; return 0; }
-  if (dsc->bg_opa != LV_OPA_COVER) { g_u5_dma2d_stats.reject_opa++; return 0; }
-  if (dsc->bg_grad.dir != LV_GRAD_DIR_NONE) { g_u5_dma2d_stats.reject_grad++; return 0; }
 
   g_u5_dma2d_stats.accept_count++;
   task->preferred_draw_unit_id = PROJECT_DMA2D_UNIT_ID;
@@ -85,9 +96,7 @@ static int32_t dispatch_cb(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
   lv_draw_task_t * task = lv_draw_get_available_task(layer, NULL, PROJECT_DMA2D_UNIT_ID);
   if (task == NULL) return 0;
 
-  const lv_draw_rect_dsc_t * dsc = (const lv_draw_rect_dsc_t *)task->draw_dsc;
   lv_draw_buf_t * draw_buf = task->target_layer->draw_buf;
-
   if (draw_buf == NULL || draw_buf->data == NULL) {
     task->state = LV_DRAW_TASK_STATE_READY;
     g_u5_dma2d_stats.error_count++;
@@ -96,20 +105,29 @@ static int32_t dispatch_cb(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
 
   g_u5_dma2d_stats.dispatch_count++;
 
-  /* DMA2D R2M fill (RM0456 §27.5): solid color from OCOLR into output with
-   * line offset OOR (pixels) = stride_px - width. */
-  uint32_t stride_px = draw_buf->header.stride / 2;
-  uint32_t offset_x = task->area.x1;
-  uint32_t offset_y = task->area.y1;
-  uint32_t width = (uint32_t)lv_area_get_width(&task->area);
-  uint32_t height = (uint32_t)lv_area_get_height(&task->area);
-  uint32_t dst_addr = (uint32_t)(uintptr_t)draw_buf->data +
-                      (offset_y * draw_buf->header.stride) + (offset_x * 2);
+  /* Root-layer shield: hand the task back to SW (reset preference). */
+  if (is_gfxmmu_virt((uint32_t)(uintptr_t)draw_buf->data)) {
+    task->preferred_draw_unit_id = LV_DRAW_UNIT_NONE;
+    task->preference_score = 100;
+    g_u5_dma2d_stats.steer_count++;
+    return 1;
+  }
+
+  const lv_draw_rect_dsc_t * dsc = (const lv_draw_rect_dsc_t *)task->draw_dsc;
+  g_u5_dma2d_stats.task_count++;
 
   task->state = LV_DRAW_TASK_STATE_IN_PROGRESS;
   {
     DMA2D_HandleTypeDef * h = &hdma2d;
     DMA2D_TypeDef * dm = h->Instance;
+    /* R2M (RM0456 §27.5): solid OCOLR -> output; OOR = line offset in pixels */
+    uint32_t stride_px = draw_buf->header.stride / 2;
+    uint32_t offset_x = task->area.x1;
+    uint32_t offset_y = task->area.y1;
+    uint32_t width = (uint32_t)lv_area_get_width(&task->area);
+    uint32_t height = (uint32_t)lv_area_get_height(&task->area);
+    uint32_t dst_addr = (uint32_t)(uintptr_t)draw_buf->data +
+                        (offset_y * draw_buf->header.stride) + (offset_x * 2);
 
     dm->CR &= ~(DMA2D_CR_MODE_Msk | DMA2D_CR_START_Msk);
     dm->CR |= DMA2D_R2M;
@@ -120,8 +138,6 @@ static int32_t dispatch_cb(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
     dm->NLR = (width << DMA2D_NLR_PL_Pos) | height;
     dm->FGPFCCR = 0U;
     dm->BGPFCCR = 0U;
-
-    g_u5_dma2d_stats.task_count++;
     dm->CR |= DMA2D_CR_START_Msk;
 
     HAL_StatusTypeDef status = HAL_DMA2D_PollForTransfer(h, DMA2D_POLL_TIMEOUT_MS);
@@ -131,10 +147,8 @@ static int32_t dispatch_cb(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
       g_u5_dma2d_stats.last_error_code = (uint32_t)status;
       (void)HAL_DMA2D_Abort(h);
       g_u5_dma2d_stats.abort_count++;
-      /* Re-init handle per plan (§5.1 HAL owner) */
       (void)HAL_DMA2D_Init(h);
-      /* Leave task WAITING so a fallback unit re-draws it; this unit does not
-       * mark READY on failure (plan: do not pretend SW fallback succeeded). */
+      /* fallback units re-dispatch this task (it stays WAITING) */
       task->state = LV_DRAW_TASK_STATE_WAITING;
       return 1;
     }

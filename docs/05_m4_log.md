@@ -39,3 +39,38 @@ Baseline: M3 (`9b33e43`). Scope: M4 step A (NeoChrom integration) + step B (proj
 - Error-injection path (debug timeout → abort → buffer-not-swapped) per plan step 2.
 - Presets (sw_only/nema_only/dma2d_only/both_serial) + 4-profile comparison (step 4).
 - 10-min (gate) long-run on final routing.
+
+---
+
+## M4 layer-path stage — PASSED (in-session continuation)
+
+### Routing mechanism (no vendor patch)
+
+`nema_gfx_evaluate` claims FILL/LABEL/LINE/IMAGE/LAYER with score 80 unconditionally (incl. ROOT). Validated steering: the head-most project DMA2D unit claims ANY root-layer task with `preference_score=80` (blocks Nema's `>80` guard), and its dispatch hands the task back to SW (`preferred_draw_unit_id=LV_DRAW_UNIT_NONE`, `score=100`; evaluate runs once at task-add, SW's dispatch takes it next round).
+
+### On-board proof
+
+- `g_u5_dma2d_stats`: evaluate_calls == shield_count == steer_count (all root tasks shielded→SW), error/abort/reject = 0. Sample at 10-min gate: 63,474 evaluate/shield/steer, 0 errors.
+- Transform scene: 80×80 rainbow RGB565 image, rotation 30°, zoom 1.5×, positioned (230,300). Rendered correctly **with Nema=ON** (contiguous layer buffer → Nema/GPU2D path; root blend → SW). User-visible confirmation: image correct; earlier "anomaly" was image half off-screen (x unset — fixed with explicit pos).
+- Isolation correctness: Nema=OFF behaves same (SW transform); Nema=ON + shield = same + hardware accelerated layer path.
+
+### 10-min gate evidence (user-binding gate)
+
+t0=22:59:42, final 23:10:44 (uptime 11.05 min, no reset):
+- frames/submits/dones healthy (transient d=1), line rate 78.5 Hz (−0.79 % vs nominal)
+- errors FB=0, DSI=1 boot baseline, LTDC=0, GFXMMU=0 (zero increment)
+- est_copy_bytes 307 MB accumulated (phase semantics), lv_used_max 12,184 B, rtos heap min-free 105,496 B, task stack HWM 3,272 words
+- SRAMCACHED readback=0 every boot; map_check 3/3 every boot
+- **20-reset skipped** (user decision; note: 3× reset smoke rounds earlier all clean, boot deterministic)
+
+## M5 blocker (recorded)
+
+M5 external-storage stage requires the **XSPI HAL driver** (`stm32u5xx_hal_xspi.c/h`): BSP `stm32u5x9j_discovery_hspi.c` (APS512XX HSPI PSRAM) and `_ospi.c` (MX25UM51245G OSPI NOR) both call `HAL_XSPI_*`. The driver is absent from the project, STM32CubeU5 clone, and the Riverdi reference — must be obtained (ST official source) in a new session before M5 storage work begins. `.ioc` keeps HSPI1/OCTOSPI1 clock freqs reserved (160 MHz) but no peripheral blocks.
+
+## Final M4 routing truth-table (this session)
+
+| Target | Unit | Why |
+|---|---|---|
+| Root (GFXMMU 3072-B stride) | SW only | DMA2D dead-write to virtual window (onboard proof); Nema 960-B pitch vendor limit; shield+steer mechanism |
+| Contiguous off-screen layers | Nema/GPU2D (IMAGE/transform), project DMA2D (clean fill) | Both hardware paths validated |
+

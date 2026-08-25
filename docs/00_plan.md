@@ -606,7 +606,7 @@ cmake -S . -B build && cmake --build build
 
 ### M4：NeoChrom + DMA2D、Cache 一致性与串行路由
 
-> 执行状态：**进行中（2026-08-25，阶段性成果已提交）**。Step A：NeoChrom 集成完成——GPU2D HAL 驱动+`Src/gpu2d.c`（SRAMCACHED 清读=0、DCACHE2 时钟不启用、优先级 5）、Nema 预编译库（M33/Thumb/hard-float，hash 已录）以 `--start-group` 链接、`.nemagfx_pool` 以对象段放置 240,640 B@0x200D0000 精确命中公式；上板证实 **vendor Nema 单元固定 960-B pitch 与 GFXMMU 3072-B stride 根层不兼容**（竖带噪点，已回退 LV_USE_NEMA_GFX=0，GPU2D 初始化保留）。**硬件事实（§9.6 修订）**：U5A9 GFXMMU 只转换 LTDC/GPU2D 图形 master 的访问——DMA2D 写入 0x24000000 虚拟窗为死写（板上 R2M+SAM 单测：SRAM 全正确、虚拟/物理回读均无），故**项目 DMA2D draw unit（ID5/score20/50ms poll/超时 abort+re-init+任务留 WAITING）不能承接根层**，已加目标范围门，职责改为连续离屏层缓冲（transform 阶段）；根层=SW。证据见 [05_m4_log.md](05_m4_log.md)。
+> 执行状态：**进行中（2026-08-25，层路径阶段已通过并提交）**。新增：**屏蔽路由机制**（项目 DMA2D 单元以 score=80 声明根层任务屏蔽 Nema，交由 SW；不改 vendor）；transform 场景（30°/1.5× 彩虹图）证实 **Nema 层路径正确**（on-board）；10-min 门限验收通过（78.5 Hz、错误零新增、submit==done、SRAMCACHED=0 每启动）。**20 次复位验收按用户决定跳过**（记录在 [05_m4_log.md](05_m4_log.md)）。**M5 前置阻塞**：BSP HSPI/OSPI 调用的 `stm32u5xx_hal_xspi.{c,h}` 不在任何工作区来源，需先取得官方 XSPI HAL 才能开始 M5 存储阶段。证据与事实修订见 [05_m4_log.md](05_m4_log.md)。
 
 **目标**
 

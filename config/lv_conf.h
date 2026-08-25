@@ -230,11 +230,12 @@
 #endif
 
 /*Use TSi's aka (Think Silicon) NemaGFX */
-/* M4: vendor Nema unit computes target pitch as width_to_stride(logical) = 960 B
- * and cannot target the GFXMMU 3072-B-stride display buffers; reserved for
- * off-screen (contiguous) layer buffers in the layer-path stage. Root layer is
- * SW + project DMA2D unit. See docs/00_plan.md §7 M4 notes. */
-#define LV_USE_NEMA_GFX 0
+/* M4: root layer stays SW (GFXMMU 3072-B stride; vendor Nema unit hardcodes
+ * 960-B pitch and cannot target it). Nema serves contiguous off-screen layer
+ * buffers (transform scene, GPU2D is a GFXMMU-capable graphics master). The
+ * project DMA2D unit shields all root tasks from Nema (score 80) and steers
+ * them to SW. */
+#define LV_USE_NEMA_GFX 1
 
 #if LV_USE_NEMA_GFX
     /** Select which NemaGFX HAL to use. Possible options:

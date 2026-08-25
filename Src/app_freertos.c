@@ -55,6 +55,9 @@ uint8_t ucHeap[configTOTAL_HEAP_SIZE] __attribute__((section(".freertos_heap"), 
 static lv_obj_t *s_rect;
 static lv_obj_t *s_alpha;
 static lv_obj_t *s_label;
+static lv_obj_t *s_img;
+static uint8_t s_img_px[80 * 80 * 2];
+static lv_image_dsc_t s_img_dsc;
 static uint32_t s_phase;
 static uint32_t s_frame;
 static uint32_t s_tick_snap;
@@ -205,6 +208,29 @@ void StartDefaultTask(void *argument)
     s_label = lv_label_create(scr);
     lv_label_set_text(s_label, "LVGL 9.3.0 direct 480x480 stride3072 M3");
     lv_obj_set_y(s_label, 12);
+
+    /* transformed image (rotation + zoom): v9.3 renders it into a contiguous
+     * off-screen layer buffer -> Nema/GPU2D path (root stays SW) */
+    for (uint32_t y = 0; y < 80U; y++) {
+      for (uint32_t x = 0; x < 80U; x++) {
+        uint16_t px = (y < 4U || y >= 76U) ? 0xFFFFU :
+                      (x < 4U || x >= 76U) ? 0xFFFFU :
+                      (uint16_t)((((x * 8U) & 0xF8U) << 8U) | ((y * 8U) & 0xF8U) | 0x1FU);
+        s_img_px[(y * 80U + x) * 2U] = (uint8_t)(px & 0xFFU);
+        s_img_px[(y * 80U + x) * 2U + 1U] = (uint8_t)(px >> 8U);
+      }
+    }
+    s_img_dsc.header.cf = LV_COLOR_FORMAT_RGB565;
+    s_img_dsc.header.w = 80U;
+    s_img_dsc.header.h = 80U;
+    s_img_dsc.header.stride = 160U;
+    s_img_dsc.data = s_img_px;
+    s_img_dsc.data_size = sizeof(s_img_px);
+    s_img = lv_image_create(scr);
+    lv_image_set_src(s_img, &s_img_dsc);
+    lv_image_set_rotation(s_img, 300); /* 30 degrees */
+    lv_image_set_scale(s_img, 150);    /* 1.5x */
+    lv_obj_set_pos(s_img, 230, 300);
 
     /* time-based motion via the official animation engine (uniform speed,
      * independent of the rendered-frame jitter); vertical slots stay fixed */
