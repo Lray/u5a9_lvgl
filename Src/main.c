@@ -31,6 +31,8 @@
 #include "board_lcd.h"
 #include "framebuffer.h"
 #include "gpu2d.h"
+#include "hspi1.h"
+#include "octospi1.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -116,6 +118,8 @@ int main(void)
     Error_Handler();
   }
   Board_LCD_VerifyMapping();
+  MX_HSPI1_Init();
+  MX_OCTOSPI1_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */

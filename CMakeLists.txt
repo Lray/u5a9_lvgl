@@ -51,6 +51,12 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     platform/perf/perf_profiler.c
     platform/perf/perf_gpio.c
     platform/graphics/lv_draw_dma2d_u5.c
+    Src/hspi1.c
+    Src/octospi1.c
+    BSP/STM32U5x9J-DK/stm32u5x9j_discovery_hspi.c
+    BSP/STM32U5x9J-DK/stm32u5x9j_discovery_ospi.c
+    BSP/Components/aps512xx/aps512xx.c
+    BSP/Components/mx25um51245g/mx25um51245g.c
 )
 
 # LVGL v9.3.0 (official release tree, configured via config/lv_conf.h)
