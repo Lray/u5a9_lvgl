@@ -1,5 +1,27 @@
 # M5 日志（外部存储、性能设施与合成基准）
 
+## 阶段 4：PSRAM 64 MiB 全覆盖诊断（2026-08-26）
+
+### 实现
+`Hspi_Psram_FullDiag()`（`platform/memory/hspi_psram.c`，`PSRAM_FULL_DIAG=ON` 编译门控，默认 OFF，
+CMake `option(PSRAM_FULL_DIAG)`，对应计划 §7 M5 上板验证 #1）：
+- 地址模式全 64 MiB 写+读回（`0xA5965A3C^i`）
+- 4 种数据模式（`0x00/FF/A5/5A`）各全量一遍
+- 256 KiB 窗口 walking-bit 1s/0s 各 32 位模式
+- DWT 计时（`diag_ms`），逐子测试 `diag_ok` 位掩码 + 首个失败地址
+
+### 上板证据（build-diag 独立目录，固定命令同构模板 m5_diag_build.cmd）
+
+```
+g_mem_probe: 4D454D31 00000008 000000FF 0000E444 00000000
+             00000001 00000001 00000001 00000001 001111A4
+             00000001 0000007F 00000000 000036C3 00000001
+```
+- `diag_run=1`、**`diag_ok=0x7F`（7/7 子测试全过）**、`diag_fail_addr=0`
+- **`diag_ms=0x36C3 = 14,019 ms`**（全量 64 MiB 多模式遍历）
+- 诊断后系统照常：CSV 1 Hz 出流、scanout 78.5 Hz、DMA2D 零错误、Nema 统计一致
+- 验收后已恢复默认固件（diag 默认关闭，不影响常规启动）
+
 ## 阶段 3：VCP CSV 遥测 + Nema allocator 统计包装（2026-08-26）
 
 ### 实现

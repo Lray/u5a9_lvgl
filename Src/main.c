@@ -123,6 +123,9 @@ int main(void)
   Board_LCD_VerifyMapping();
   MX_HSPI1_Init();
   MX_OCTOSPI1_Init();
+#if defined(PSRAM_FULL_DIAG)
+  Hspi_Psram_FullDiag();
+#endif
   Hspi_Psram_ArenaInit();
   MX_USART1_Init();
   /* USER CODE END 2 */

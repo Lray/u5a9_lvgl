@@ -13,6 +13,10 @@ extern "C" {
 void Hspi_Psram_ArenaInit(void);
 void *Hspi_Psram_Alloc(uint32_t size);
 
+#if defined(PSRAM_FULL_DIAG)
+void Hspi_Psram_FullDiag(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

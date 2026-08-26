@@ -107,6 +107,12 @@ if(PERF_GPIO_EN)
     target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE PERF_GPIO_EN=1)
 endif()
 
+# Optional PSRAM 64 MiB full-coverage boot diagnostic (plan §7 M5 上板验证 #1)
+option(PSRAM_FULL_DIAG "PSRAM full-walk boot diagnostic (delays boot ~10-20 s)" OFF)
+if(PSRAM_FULL_DIAG)
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE PSRAM_FULL_DIAG=1)
+endif()
+
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols

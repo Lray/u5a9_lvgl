@@ -132,3 +132,135 @@ void Hspi_Psram_ArenaInit(void)
   g_mem_probe.arena_hwm = (uint32_t)(s_cursor - (uint8_t *)(size_t)HSPI_PSRAM_ARENA_BASE);
   g_mem_probe.done = 1U;
 }
+
+#if defined(PSRAM_FULL_DIAG)
+
+#define PSRAM_DIAG_WORDS      (HSPI_PSRAM_ARENA_SIZE / sizeof(uint32_t))
+#define PSRAM_DIAG_WALK_WORDS (256U * 1024U / sizeof(uint32_t))
+
+static void psram_diag_mark(uint32_t *okmask, uint32_t bit, uint32_t pass, uint32_t failaddr,
+                            uint32_t *fail_addr)
+{
+  if (pass)
+  {
+    *okmask |= (1UL << bit);
+  }
+  else if (*fail_addr == 0UL)
+  {
+    *fail_addr = failaddr;
+  }
+}
+
+void Hspi_Psram_FullDiag(void)
+{
+  volatile uint32_t *base = (volatile uint32_t *)(size_t)HSPI_PSRAM_ARENA_BASE;
+  volatile uint32_t *walk = (volatile uint32_t *)(size_t)HSPI_PSRAM_ARENA_BASE;
+  static const uint32_t k_patterns[4] = {0x00000000UL, 0xFFFFFFFFUL, 0xA5A5A5A5UL, 0x5A5A5A5AUL};
+  uint32_t ok = 0U;
+  uint32_t fail_addr = 0U;
+  uint32_t t0;
+  uint32_t bit;
+
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+  DWT->CYCCNT = 0U;
+  __DMB();
+  t0 = DWT->CYCCNT;
+
+  for (uint32_t i = 0U; i < PSRAM_DIAG_WORDS; i++)
+  {
+    base[i] = 0xA5965A3CUL ^ i;
+  }
+  __DSB();
+  uint32_t pass = 1U;
+  for (uint32_t i = 0U; i < PSRAM_DIAG_WORDS; i++)
+  {
+    if (base[i] != (0xA5965A3CUL ^ i))
+    {
+      pass = 0U;
+      psram_diag_mark(&ok, 0U, 0U, (uint32_t)((size_t)&base[i]), &fail_addr);
+      break;
+    }
+  }
+  psram_diag_mark(&ok, 0U, pass, 0UL, &fail_addr);
+
+  for (bit = 0U; bit < 4U; bit++)
+  {
+    for (uint32_t i = 0U; i < PSRAM_DIAG_WORDS; i++)
+    {
+      base[i] = k_patterns[bit];
+    }
+    __DSB();
+    pass = 1U;
+    for (uint32_t i = 0U; i < PSRAM_DIAG_WORDS; i++)
+    {
+      if (base[i] != k_patterns[bit])
+      {
+        pass = 0U;
+        psram_diag_mark(&ok, bit + 1U, 0U, (uint32_t)((size_t)&base[i]), &fail_addr);
+        break;
+      }
+    }
+    psram_diag_mark(&ok, bit + 1U, pass, 0UL, &fail_addr);
+  }
+
+  for (uint32_t w = 0U; w < 32U; w++)
+  {
+    uint32_t pat = (1UL << w);
+    for (uint32_t i = 0U; i < PSRAM_DIAG_WALK_WORDS; i++)
+    {
+      walk[i] = pat;
+    }
+    __DSB();
+    pass = 1U;
+    for (uint32_t i = 0U; i < PSRAM_DIAG_WALK_WORDS; i++)
+    {
+      if (walk[i] != pat)
+      {
+        pass = 0U;
+        psram_diag_mark(&ok, 5U, 0U, (uint32_t)((size_t)&walk[i]), &fail_addr);
+        break;
+      }
+    }
+    if (!pass)
+    {
+      break;
+    }
+  }
+  psram_diag_mark(&ok, 5U, pass, 0UL, &fail_addr);
+
+  pass = 1U;
+  for (uint32_t w = 0U; w < 32U; w++)
+  {
+    uint32_t pat = ~(1UL << w);
+    for (uint32_t i = 0U; i < PSRAM_DIAG_WALK_WORDS; i++)
+    {
+      walk[i] = pat;
+    }
+    __DSB();
+    for (uint32_t i = 0U; i < PSRAM_DIAG_WALK_WORDS; i++)
+    {
+      if (walk[i] != pat)
+      {
+        pass = 0U;
+        psram_diag_mark(&ok, 6U, 0U, (uint32_t)((size_t)&walk[i]), &fail_addr);
+        break;
+      }
+    }
+    if (!pass)
+    {
+      break;
+    }
+  }
+  psram_diag_mark(&ok, 6U, pass, 0UL, &fail_addr);
+
+  __DMB();
+  uint32_t cyc = DWT->CYCCNT - t0;
+
+  g_mem_probe.diag_run = 1U;
+  g_mem_probe.diag_ok = ok;
+  g_mem_probe.diag_fail_addr = fail_addr;
+  g_mem_probe.diag_ms = cyc / 160000U;
+}
+
+#endif /* PSRAM_FULL_DIAG */
