@@ -1,5 +1,72 @@
 # M5 日志（外部存储、性能设施与合成基准）
 
+## 阶段 6：M5 收口（2026-08-26）——正式基准、长稳、扰动量化、未测试项声明
+
+### NOR CRC 链路自检（上板验证 #1 的 NOR 部分）
+- `platform/memory/ospi_nor.{c,h}`：标准 CRC-32（nibble 表，**主机 Python/zlib 独立对照验证实现正确**）+ 启动自检读 NOR 首 64 KiB 计算 CRC + 非零字数统计
+- 板上结果（`g_mem_probe` 扩展）：`nor_crc32=0x1C1C6A9A`（两轮稳定）、**`nor_nonzero_words=0x39B2`（16,384 字中 14,770 非零 ≈90%）→ 板上 NOR 出厂含数据**（此前仅验证前 16 B 为零）；CRC 对真实内容正确
+- 说明：基准资源采用程序生成图案（计划 §7 M5 回退方案允许"资源先改用内部Flash/生成图案"）；正式资源 manifest 管线（offset/size/CRC）留待真实资产阶段
+
+### LV_SYSMON_GET_IDLE → FreeRTOS provider（计划验收项）
+- `freertos_runtime_stats.c` 新增 `perf_idle_percent()`：`ulTaskGetIdleRunTimeCounter / perf_runtime_counter64`；`lv_conf.h` `LV_SYSMON_GET_IDLE` 指向它；m3_snapshot 直读（CSV idle 字段语义=整机 FreeRTOS idle）
+
+### 正式基准运行（10 s warm-up + 60 s sample ×3，归档 docs/perf_results/）
+
+| 场景 | FPS (x̄) | swaps/s | scan Hz | idle% | lvmax B | 错误 |
+|---|---|---|---|---|---|---|
+| full_repaint | 29.5 | 29.4 | 78.1 | 31.7 | 7408 | 0 |
+| transform | 32.8 | 29.5 | 78.4 | 32.1 | 11348 | 0 |
+| alpha | 2.96 | 2.9 | 77.6 | 0.0 | 8256 | 0 |
+| text | 63.2 | 29.4 | 78.2 | 31.0 | 8264 | 0 |
+| mixed | 68.6 | 28.3 | 78.6 | 16.0 | 12184 | 0 |
+
+三次采样逐项几乎一致（确定性场景，可重复性极好）；transform_iter3 因主机串口中断仅 33 s（标注）。Nema 统计全程 allocs=2/hwm=2/fails=0。
+
+### 长稳（10-min 用户门限）
+`mixed_soak1.csv`：dt=609 s、620 行（1 Hz 全命中）、fps 65.4、scan 78.59 Hz、**四类错误全零、Nema 零失败**、无复位。
+
+### monitor on/off 扰动量化（full_repaint，62 s 各一）
+- off 构建：独立 `build-off` + `CMAKE_C_FLAGS_DEBUG` 注入 `-DLV_USE_PROFILER=0 -DLV_USE_SYSMON=0 -DLV_USE_PERF_MONITOR=0`（工具链文件改累积语义支持）；compile_commands 证实宏注入
+- 结果：**FPS 29.45 vs 29.53（<1%）**、idle 32.9% vs 31.7%（≈1 pp）、lvmax 6288 vs 7408（省 1,120 B 观测对象，证明 off 生效）
+- 结论：观测设施扰动 ≈1% CPU、<1% FPS——低扰动设计成立
+
+### 未测试项声明（计划文本允许"没有实现就明确记为未测试"）
+1. **XRGB8888 单变量**：未实现。需 ARGB8888 LUT + FB 720 KiB 布局 + lv_conf 32bpp 全套切换；RGB565 正式基线保持（计划回退方向）
+2. **PSRAM cacheable 单变量**：未实现。需 DCACHE1 使能 + 维护闭环（cache.c 未建）+ MPU attr 切换；safe 基线 PSRAM non-cache 已冻结
+3. **受控并发**：未测试。共享 arbiter/dependency/fence 未实现；正式串行路由保持
+4. **NOR 正式资源 manifest**：未实现（见上，回退方案允许生成图案）
+
+### 构建/验收状态
+- 固定命令默认构建零警告（497 目标，FLASH 12.49%）；五场景构建零警告（502 目标）
+- 默认固件已恢复 mixed；build-bench/build-off 已清理
+
+## 阶段 5：合成基准场景框架（2026-08-26）
+
+### 实现
+- `benchmarks/bench_runner.{c,h}`：`Bench_Scene_Setup/Step` 分发，`BENCH_SCENE` CMake 选项
+  （mixed|full_repaint|transform|alpha|text，默认 mixed=既有 demo 行为原样保留）
+- 场景文件（plan §5.3 矩阵）：
+  - `bench_full_repaint.c`：每帧强制 100% dirty 全屏色块
+  - `bench_transform.c`：80×80 程序生成彩虹格图，旋转 30°/1.5× + 平移动画（Nema 层路径，自 M4 验证场景抽取）
+  - `bench_alpha_layers.c`：4 层全屏 30% alpha 叠加，alpha 周期扰动
+  - `bench_text_scroll.c`：montserrat_14 固定字符串横纵滚动（局部 dirty）
+  - `bench_mixed.c`：原 M3/M4 demo 原样迁移（rect+alpha+label+transform img+25 s 相位 100% dirty 交替）
+- `app_freertos.c` 瘦身为任务胶水：init/自检 → `Bench_Scene_Setup` → 循环 `Bench_Scene_Step`+`lv_timer_handler`+1 s 快照
+- 统计复用现有 CSV 遥测；warmup/sample 分段由主机按 CSV `up_ms` 时间窗处理（10 s/60 s×3 语义）
+
+### 上板证据（m5_bench_build.cmd 参数化构建，每场景 UR 烧录 + COM7 抓取 12 s）
+
+| 场景 | FPS(lvgl_frames Δ) | idle% | 特征 |
+|---|---|---|---|
+| mixed（回归） | ~30（相位相关） | 4-56 | 与抽取前完全一致（帧/swap/错误全同） |
+| full_repaint | ~29.7 | ~57 | 100% dirty 全屏 SW 重绘 |
+| transform | ~33 | ~70 | Nema 层路径单图变换 |
+| alpha | ~3.3 | 0 | 4 层全屏 alpha 读改写带宽压力 |
+| text | ~68 | ~35-45 | 局部 dirty 滚动文字 |
+
+全部场景：scanout 78.5 Hz 恒定、swap submit/done 同步、四类错误零、Nema/DMA2D 统计正常。
+五场景构建均零警告（502 目标）。默认固件已恢复 mixed。
+
 ## 阶段 4：PSRAM 64 MiB 全覆盖诊断（2026-08-26）
 
 ### 实现

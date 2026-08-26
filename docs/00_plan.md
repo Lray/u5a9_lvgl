@@ -641,6 +641,8 @@ cmake -S . -B build && cmake --build build
 
 ### M5：外部存储、完整性能设施与合成基准
 
+> 执行状态：**已通过（2026-08-26）**。存储接入（方式 A 手写 MX_*_Init，不碰 .ioc）、MPU 8-region 落地（PMSAv8 无 no-access 编码，region7 改为属性钉扎+linker ASSERT，已记录）、PSRAM 资源 arena（32-B 对齐/canary/高水位）、VCP CSV 遥测（921600 @1 Hz 零丢行）、Nema allocator wrap 统计（map+运行时双证）、PSRAM 64 MiB 全覆盖诊断（7/7 子测试，14.0 s）、NOR CRC 链路（CRC32 主机对照验证；板上 NOR 出厂含数据 ~90% 非零）、五场景基准框架+正式运行（10 s warm-up+60 s×3，FPS：full_repaint 29.5/transform 32.8/alpha 2.96/text 63.2/mixed 68.6，全场景 scanout 78.1-78.6 Hz 零错误）、10-min 长稳（用户门限，零错误零失败）、monitor on/off 扰动量化（≈1% CPU、<1% FPS）。**未测试项（计划允许明确记录）**：XRGB8888、PSRAM cacheable、受控并发（无真实 arbiter）、正式 NOR 资源 manifest（基准用程序生成图案=计划回退方案）。证据 [06_m5_log.md](06_m5_log.md) 与 docs/perf_results/。
+
 **目标**
 
 - 接 OSPI NOR只读 memory map、HSPI APS512XX PSRAM、32-byte cache-line独占的资源arena和PSRAM safe/perf profile；正式display始终关闭GFXMMU data cache/prefetch，整个项目仍不启用DCACHE2。

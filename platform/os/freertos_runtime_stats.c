@@ -7,6 +7,8 @@
 
 #include "freertos_runtime_stats.h"
 #include "stm32u5xx_hal.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 static volatile uint32_t s_last;
 static volatile uint64_t s_total;
@@ -24,4 +26,17 @@ uint64_t perf_runtime_counter64(void)
   s_total += (uint32_t)(raw - s_last);
   s_last = raw;
   return s_total;
+}
+
+uint32_t perf_idle_percent(void)
+{
+  uint32_t idle = ulTaskGetIdleRunTimeCounter();
+  uint64_t total = perf_runtime_counter64();
+
+  if (total == 0U)
+  {
+    return 0U;
+  }
+
+  return (uint32_t)(((uint64_t)idle * 100U) / total);
 }

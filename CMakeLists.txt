@@ -53,11 +53,18 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     platform/graphics/lv_draw_dma2d_u5.c
     platform/memory/mpu.c
     platform/memory/hspi_psram.c
+    platform/memory/ospi_nor.c
     platform/perf/perf_uart.c
     platform/perf/perf_nema_alloc.c
     Src/hspi1.c
     Src/octospi1.c
     Src/usart1.c
+    benchmarks/bench_runner.c
+    benchmarks/bench_full_repaint.c
+    benchmarks/bench_transform.c
+    benchmarks/bench_alpha_layers.c
+    benchmarks/bench_text_scroll.c
+    benchmarks/bench_mixed.c
     BSP/STM32U5x9J-DK/stm32u5x9j_discovery_hspi.c
     BSP/STM32U5x9J-DK/stm32u5x9j_discovery_ospi.c
     BSP/Components/aps512xx/aps512xx.c
@@ -97,6 +104,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/os
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/graphics
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks
     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/src
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/STM32U5x9J-DK
 )
@@ -111,6 +119,18 @@ endif()
 option(PSRAM_FULL_DIAG "PSRAM full-walk boot diagnostic (delays boot ~10-20 s)" OFF)
 if(PSRAM_FULL_DIAG)
     target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE PSRAM_FULL_DIAG=1)
+endif()
+
+# Benchmark scene selection (plan §5.3; default mixed = legacy demo behavior)
+set(BENCH_SCENE "mixed" CACHE STRING "benchmark scene: mixed|full_repaint|transform|alpha|text")
+if(BENCH_SCENE STREQUAL "full_repaint")
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE BENCH_SCENE_FULL_REPAINT=1)
+elseif(BENCH_SCENE STREQUAL "transform")
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE BENCH_SCENE_TRANSFORM=1)
+elseif(BENCH_SCENE STREQUAL "alpha")
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE BENCH_SCENE_ALPHA=1)
+elseif(BENCH_SCENE STREQUAL "text")
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE BENCH_SCENE_TEXT=1)
 endif()
 
 # Add project symbols (macros)

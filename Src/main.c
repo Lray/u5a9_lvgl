@@ -35,6 +35,7 @@
 #include "octospi1.h"
 #include "mpu.h"
 #include "hspi_psram.h"
+#include "ospi_nor.h"
 #include "usart1.h"
 /* USER CODE END Includes */
 
@@ -123,6 +124,7 @@ int main(void)
   Board_LCD_VerifyMapping();
   MX_HSPI1_Init();
   MX_OCTOSPI1_Init();
+  Ospi_Nor_SelfCheck();
 #if defined(PSRAM_FULL_DIAG)
   Hspi_Psram_FullDiag();
 #endif

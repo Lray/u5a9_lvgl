@@ -25,6 +25,8 @@ typedef struct
   uint32_t diag_ok;
   uint32_t diag_fail_addr;
   uint32_t diag_ms;
+  uint32_t nor_crc32;
+  uint32_t nor_nonzero_words;
   uint32_t done;
 } mem_probe_t;
 
