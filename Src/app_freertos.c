@@ -28,6 +28,8 @@
 #include "lv_port_display.h"
 #include "lv_draw_dma2d_u5.h"
 #include "perf_profiler.h"
+#include "perf_uart.h"
+#include "app_stats.h"
 #include "framebuffer.h"
 #include "board_lcd.h"
 /* USER CODE END Includes */
@@ -61,32 +63,6 @@ static lv_image_dsc_t s_img_dsc;
 static uint32_t s_phase;
 static uint32_t s_frame;
 static uint32_t s_tick_snap;
-
-typedef struct
-{
-  uint32_t uptime_ms;
-  uint8_t  phase;
-  uint32_t lvgl_frames;
-  uint32_t swap_submit;
-  uint32_t swap_done;
-  uint32_t refr_calls;
-  uint32_t refr_cycles;
-  uint32_t sync_calls;
-  uint32_t sync_cycles;
-  uint32_t wait_calls;
-  uint32_t wait_cycles;
-  uint32_t est_copy_bytes;
-  uint32_t line_events;
-  uint32_t idle_percent;
-  uint32_t lv_used_max;
-  uint32_t rtos_heap_free_min;
-  uint32_t task_stack_hwm;
-  uint32_t err_fb;
-  uint32_t err_dsi;
-  uint32_t err_ltdc;
-  uint32_t err_gfxmmu;
-  uint32_t front_virtual;
-} m3_snapshot_t;
 
 m3_snapshot_t g_m3_stats;
 
@@ -156,7 +132,7 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  Perf_Uart_Start();
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

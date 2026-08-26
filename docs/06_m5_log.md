@@ -1,5 +1,81 @@
 # M5 日志（外部存储、性能设施与合成基准）
 
+## 阶段 3：VCP CSV 遥测 + Nema allocator 统计包装（2026-08-26）
+
+### 实现
+
+| 文件 | 内容 |
+|---|---|
+| `Drivers/…/stm32u5xx_hal_uart{,_ex}.{c,h}` | 官方 FW_U5_V1.8.0 包同源复制（HAL V1.6.2）；hal_conf 启用 `HAL_UART_MODULE_ENABLED` |
+| `Src/usart1.{c,h}` | 方式 A：内核时钟显式 SYSCLK、PA9/PA10 AF7、921600-8N1 TX-only、MSP 自含（regen 安全）、无 IRQ（轮询发送） |
+| `platform/perf/perf_uart.{c,h}` | `perfUart` 线程（BelowNormal/2 KiB）：1 Hz 快照 `g_m3_stats`+DMA2D+Nema 统计→单行 CSV→`HAL_UART_Transmit` 100 ms 超时；drop 计数 |
+| `Inc/app_stats.h` | `m3_snapshot_t` 从 app_freertos.c 提升共享（写读两侧同头文件防漂移） |
+| `platform/perf/perf_nema_alloc.{c,h}` + `-Wl,--wrap=tsi_malloc_pool/tsi_free` | 固定表统计。事实修订：vendor glue 经 `tsi_malloc(size)` **宏**转发到 `tsi_malloc_pool(0,…)`，wrap 点与计划一致 |
+
+CSV 字段序：`seq,up_ms,lines,lvgl_frames,sw_sub,fb_err,dsi_err,ltdc_err,gfxmmu_err,dma_disp,dma_err,n_allocs,n_frees,outst_hwm,fails,idle_pm,lv_used_max`
+
+### 上板证据（COM7 ST-LINK VCP 抓取 12 s）
+
+```
+39,39812,3196,2209,1104,0,1,0,0,9103,0,2,0,2,0,48,12184
+...
+51,51895,4139,3318,1455,0,1,0,0,12276,0,2,0,2,0,5,12184
+```
+- 12 s 恰 13 行（1 Hz 精确、零丢行）
+- lines 增速 78.5 Hz 标称；`dsi_err=1` 为 M1 已记录的启动期一次性 ACK（恒定不增长）
+- **map 证明 wrap 生效**：`__wrap_tsi_malloc_pool@0x0801109c`、`__wrap_tsi_free@0x0801110c`；
+  运行时 allocs=2/frees=0/outst_hwm=2（Nema 仅初始化期分配 context+ring，符合预期），fails=0
+- DMA2D dispatch 推进、error=0；显示管线无扰动
+
+### 统计口径说明（诚实边界）
+
+`tsi_free` 无 size 参数，字节级 current 无法由 wrapper 精确维护；表输出
+allocs/frees/outst(计数)/outst_hwm/fails + bytes_cum。字节级高水位需 allocator 内部信息（开放项）。
+
+## 阶段 2：MPU 落地 + PSRAM 资源 arena（2026-08-26）
+
+### 权威参考来源（回应"仓库无 MPU 参考"）
+
+工作区/Riverdi/本板官方示例均无 MPU 配置先例（U5x9J-DK 示例全部裸跑默认映射）。采用同官方包
+`STM32Cube_FW_U5_V1.8.0\Projects\STM32U575I-EV` 的权威模式：
+- `Examples\BSP\Src\main.c` / `DMA2D_BlendingWithAlphaInversion`：Disable→MAIR→region(Base/Limit-1)→
+  `HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT)`；
+- `Examples\DCACHE\DCACHE_Maintenance`：缓存属性组合写法 `MPU_NOT_CACHEABLE | OUTER(policy…)`
+  （**外 nibble 承载缓存策略**，内 nibble 固定 NC——照抄，不自创）。
+计划 §4.6 region 表为冻结规格；`platform/memory/mpu.c` 仅做表→HAL API 的机械映射。
+
+### 与计划的偏差（纪律 #6 记录）
+
+§4.6 region7 要求 "no-access guard"，但 Armv8-M PMSA AP 编码仅 RW/RO × priv/all 四种，
+**no-access 硬件不可表达**。修订：region7 以 `PRIV_RW+XN+NC` 钉住属性（防止未来 DCACHE1 缓存该窗口）；
+硬防护仍由既有 linker ASSERT（`.sram3_guard` 区禁入）与 MSPLIM/任务栈检查承担。
+
+### 实现
+
+| 文件 | 内容 |
+|---|---|
+| `platform/memory/mpu.{c,h}` | DREGION==8 检查；MAIR0=attr0(NC 0x44)/attr1(内NC+外WB-R-A 0xE4)；8 regions：FB0/FB1/GFXMMU virtual/Nema pool/DMA staging=ALL_RW XN inner-shareable NC、OSPI NOR=ALL_RO XN(attr1)、PSRAM safe=ALL_RW XN NC、guard=PRIV_RW XN；`HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT)`；逐 region RBAR/RLAR readback |
+| `Inc/mem_probe.h` + `g_mem_probe @0x201752EC`(map 核实) | 启动探针：magic/dregion/rb 掩码/MAIR/arena 结果/done |
+| `platform/memory/hspi_psram.{c,h}` | PSRAM arena @0xA0000000（32 MiB 预算，§4.5）：32-B 对齐分配、rounded-size、头 magic/canary + 尾 canary、bump 语义 + high-water；上电自检：数据 pattern、对齐断言、跨分配 canary 完整性 |
+
+main.c：`MX_MPU_Config()` 入 USER CODE SysInit（先于 ICACHE/GFXMMU/XSPI），`Hspi_Psram_ArenaInit()` 入 USER CODE 2 尾。
+
+### 上板证据（UR 烧录 -v → 复位 → HOTPLUG 干净读）
+
+```
+g_mem_probe: 4D454D31 00000008 000000FF 0000E444 00000000
+             00000001 00000001 00000001 00000001 001111A4 00000001
+```
+- dregion=8 ✅（计划硬闸门）；mpu_rb_ok=0xFF ✅（8/8 region base/limit/AP/XN/SH/AttrIndx 全匹配）
+- MAIR0=0xE444 ✅（attr0=NC、attr1=WB-R-A）；arena init/data/align/canary 全 1 ✅；hwm≈1.07 MiB 合理
+- `g_xspi_probe` 全绿不变（存储自检在 MPU 下复测通过）
+- 显示管线活性：10 s 内 line events +8,276（79.1 Hz 标称）、swap submit/done 差恒 1（不变式保持）、错误计数全零
+
+### 构建
+
+固定命令全新 build：491 目标 **零错误零警告**，FLASH 12.35%。
+正式 10-min 门限随基准设施阶段统一执行（本轮为基础设施 bring-up）。
+
 ## 阶段 1：存储接入（方式 A，2026-08-26）
 
 ### 前置阻塞解除：XSPI HAL 来源

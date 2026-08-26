@@ -33,6 +33,9 @@
 #include "gpu2d.h"
 #include "hspi1.h"
 #include "octospi1.h"
+#include "mpu.h"
+#include "hspi_psram.h"
+#include "usart1.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -100,7 +103,7 @@ int main(void)
   PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  MX_MPU_Config();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -120,6 +123,8 @@ int main(void)
   Board_LCD_VerifyMapping();
   MX_HSPI1_Init();
   MX_OCTOSPI1_Init();
+  Hspi_Psram_ArenaInit();
+  MX_USART1_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */

@@ -51,8 +51,13 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     platform/perf/perf_profiler.c
     platform/perf/perf_gpio.c
     platform/graphics/lv_draw_dma2d_u5.c
+    platform/memory/mpu.c
+    platform/memory/hspi_psram.c
+    platform/perf/perf_uart.c
+    platform/perf/perf_nema_alloc.c
     Src/hspi1.c
     Src/octospi1.c
+    Src/usart1.c
     BSP/STM32U5x9J-DK/stm32u5x9j_discovery_hspi.c
     BSP/STM32U5x9J-DK/stm32u5x9j_discovery_ospi.c
     BSP/Components/aps512xx/aps512xx.c
@@ -91,6 +96,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/perf
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/os
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/graphics
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/memory
     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/src
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/STM32U5x9J-DK
 )
@@ -108,6 +114,12 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Remove wrong libob.a library dependency when using cpp files
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
+
+# Nema allocator statistics via symbol wrapping (plan §7 M5; map must show __wrap bindings)
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+    -Wl,--wrap=tsi_malloc_pool
+    -Wl,--wrap=tsi_free
+)
 
 # Add linked libraries (--group: lvgl and the precompiled NemaGFX library
 # reference each other; single-pass archive scan would miss the back-references)
