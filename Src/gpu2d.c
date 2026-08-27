@@ -11,64 +11,80 @@
 /* Includes ------------------------------------------------------------------*/
 #include "gpu2d.h"
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-#include "main.h"
-/* USER CODE END Includes */
+/* USER CODE BEGIN 0 */
+volatile uint32_t g_gpu2d_sramcached_readback;
+/* USER CODE END 0 */
 
-/* Private variables ---------------------------------------------------------*/
 GPU2D_HandleTypeDef hgpu2d;
 
-volatile uint32_t g_gpu2d_sramcached_readback;
-volatile uint32_t g_gpu2d_error_count;
-
+/* GPU2D init function */
 void MX_GPU2D_Init(void)
 {
-  __HAL_RCC_SYSCFG_CLK_ENABLE();
 
-  /* DCACHE2 must stay off: clear SRAMCACHED and read it back (plan §6.3) */
+  /* USER CODE BEGIN GPU2D_Init 0 */
+  __HAL_RCC_SYSCFG_CLK_ENABLE();
   CLEAR_BIT(SYSCFG->CFGR1, SYSCFG_CFGR1_SRAMCACHED);
   g_gpu2d_sramcached_readback = READ_BIT(SYSCFG->CFGR1, SYSCFG_CFGR1_SRAMCACHED);
+  /* USER CODE END GPU2D_Init 0 */
 
+  /* USER CODE BEGIN GPU2D_Init 1 */
+
+  /* USER CODE END GPU2D_Init 1 */
   hgpu2d.Instance = GPU2D;
   if (HAL_GPU2D_Init(&hgpu2d) != HAL_OK)
   {
     Error_Handler();
   }
+  /* USER CODE BEGIN GPU2D_Init 2 */
+
+  /* USER CODE END GPU2D_Init 2 */
+
 }
 
-void HAL_GPU2D_MspInit(GPU2D_HandleTypeDef *gpu2dHandle)
+void HAL_GPU2D_MspInit(GPU2D_HandleTypeDef* gpu2dHandle)
 {
-  if (gpu2dHandle->Instance == GPU2D)
+
+  if(gpu2dHandle->Instance==GPU2D)
   {
-    /* USER CODE BEGIN GPU2D_MspInit 0 */
+  /* USER CODE BEGIN GPU2D_MspInit 0 */
 
-    /* USER CODE END GPU2D_MspInit 0 */
+  /* USER CODE END GPU2D_MspInit 0 */
+    /* GPU2D clock enable */
     __HAL_RCC_GPU2D_CLK_ENABLE();
+    __HAL_RCC_DCACHE2_CLK_ENABLE();
 
+    /* GPU2D interrupt Init */
     HAL_NVIC_SetPriority(GPU2D_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(GPU2D_IRQn);
     HAL_NVIC_SetPriority(GPU2D_ER_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(GPU2D_ER_IRQn);
-    /* USER CODE BEGIN GPU2D_MspInit 1 */
+  /* USER CODE BEGIN GPU2D_MspInit 1 */
 
-    /* USER CODE END GPU2D_MspInit 1 */
+  /* USER CODE END GPU2D_MspInit 1 */
   }
 }
 
-void HAL_GPU2D_MspDeInit(GPU2D_HandleTypeDef *gpu2dHandle)
+void HAL_GPU2D_MspDeInit(GPU2D_HandleTypeDef* gpu2dHandle)
 {
-  if (gpu2dHandle->Instance == GPU2D)
+
+  if(gpu2dHandle->Instance==GPU2D)
   {
-    /* USER CODE BEGIN GPU2D_MspDeInit 0 */
+  /* USER CODE BEGIN GPU2D_MspDeInit 0 */
 
-    /* USER CODE END GPU2D_MspDeInit 0 */
+  /* USER CODE END GPU2D_MspDeInit 0 */
+    /* Peripheral clock disable */
     __HAL_RCC_GPU2D_CLK_DISABLE();
+    __HAL_RCC_DCACHE2_CLK_DISABLE();
 
+    /* GPU2D interrupt Deinit */
     HAL_NVIC_DisableIRQ(GPU2D_IRQn);
     HAL_NVIC_DisableIRQ(GPU2D_ER_IRQn);
-    /* USER CODE BEGIN GPU2D_MspDeInit 1 */
+  /* USER CODE BEGIN GPU2D_MspDeInit 1 */
 
-    /* USER CODE END GPU2D_MspDeInit 1 */
+  /* USER CODE END GPU2D_MspDeInit 1 */
   }
 }
+
+/* USER CODE BEGIN 1 */
+
+/* USER CODE END 1 */

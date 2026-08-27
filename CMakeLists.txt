@@ -46,11 +46,9 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     platform/display/board_lcd.c
     platform/display/framebuffer.c
-    platform/display/lv_port_display.c
     platform/os/freertos_runtime_stats.c
     platform/perf/perf_profiler.c
     platform/perf/perf_gpio.c
-    platform/graphics/lv_draw_dma2d_u5.c
     platform/memory/mpu.c
     platform/memory/hspi_psram.c
     platform/memory/ospi_nor.c
@@ -58,7 +56,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     platform/perf/perf_nema_alloc.c
     Src/hspi1.c
     Src/octospi1.c
-    Src/usart1.c
     benchmarks/bench_runner.c
     benchmarks/bench_full_repaint.c
     benchmarks/bench_transform.c
@@ -69,6 +66,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     BSP/STM32U5x9J-DK/stm32u5x9j_discovery_ospi.c
     BSP/Components/aps512xx/aps512xx.c
     BSP/Components/mx25um51245g/mx25um51245g.c
+    Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_xspi.c
+    Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_ll_dlyb.c
 )
 
 # LVGL v9.3.0 (official release tree, configured via config/lv_conf.h)

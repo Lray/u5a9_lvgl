@@ -20,9 +20,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32u5xx_it.h"
-#include "gfxmmu.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "lvgl.h"
+#include "draw/dma2d/lv_draw_dma2d.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,8 +57,8 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern DMA2D_HandleTypeDef hdma2d;
 extern DSI_HandleTypeDef hdsi;
+extern GPU2D_HandleTypeDef hgpu2d;
 extern LTDC_HandleTypeDef hltdc;
 extern TIM_HandleTypeDef htim2;
 
@@ -185,10 +186,52 @@ void DMA2D_IRQHandler(void)
   /* USER CODE BEGIN DMA2D_IRQn 0 */
 
   /* USER CODE END DMA2D_IRQn 0 */
-  HAL_DMA2D_IRQHandler(&hdma2d);
+  lv_draw_dma2d_transfer_complete_interrupt_handler();
   /* USER CODE BEGIN DMA2D_IRQn 1 */
 
   /* USER CODE END DMA2D_IRQn 1 */
+}
+
+/**
+  * @brief This function handles GPU2D global interrupt.
+  */
+void GPU2D_IRQHandler(void)
+{
+  /* USER CODE BEGIN GPU2D_IRQn 0 */
+
+  /* USER CODE END GPU2D_IRQn 0 */
+  HAL_GPU2D_IRQHandler(&hgpu2d);
+  /* USER CODE BEGIN GPU2D_IRQn 1 */
+
+  /* USER CODE END GPU2D_IRQn 1 */
+}
+
+/**
+  * @brief This function handles GPU2D Error interrupt.
+  */
+void GPU2D_ER_IRQHandler(void)
+{
+  /* USER CODE BEGIN GPU2D_ER_IRQn 0 */
+
+  /* USER CODE END GPU2D_ER_IRQn 0 */
+  HAL_GPU2D_ER_IRQHandler(&hgpu2d);
+  /* USER CODE BEGIN GPU2D_ER_IRQn 1 */
+
+  /* USER CODE END GPU2D_ER_IRQn 1 */
+}
+
+/**
+  * @brief This function handles LCD-TFT global interrupt.
+  */
+void LTDC_IRQHandler(void)
+{
+  /* USER CODE BEGIN LTDC_IRQn 0 */
+
+  /* USER CODE END LTDC_IRQn 0 */
+  HAL_LTDC_IRQHandler(&hltdc);
+  /* USER CODE BEGIN LTDC_IRQn 1 */
+
+  /* USER CODE END LTDC_IRQn 1 */
 }
 
 /**
@@ -220,25 +263,5 @@ void DSI_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-void LTDC_IRQHandler(void)
-{
-  HAL_LTDC_IRQHandler(&hltdc);
-}
 
-void GFXMMU_IRQHandler(void)
-{
-  HAL_GFXMMU_IRQHandler(&hgfxmmu);
-}
-
-void GPU2D_IRQHandler(void)
-{
-  extern GPU2D_HandleTypeDef hgpu2d;
-  HAL_GPU2D_IRQHandler(&hgpu2d);
-}
-
-void GPU2D_ER_IRQHandler(void)
-{
-  extern GPU2D_HandleTypeDef hgpu2d;
-  HAL_GPU2D_ER_IRQHandler(&hgpu2d);
-}
 /* USER CODE END 1 */

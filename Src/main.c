@@ -21,9 +21,10 @@
 #include "cmsis_os2.h"
 #include "dma2d.h"
 #include "dsihost.h"
-#include "gfxmmu.h"
+#include "gpu2d.h"
 #include "icache.h"
 #include "ltdc.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -36,7 +37,6 @@
 #include "mpu.h"
 #include "hspi_psram.h"
 #include "ospi_nor.h"
-#include "usart1.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -113,15 +113,14 @@ int main(void)
   MX_ICACHE_Init();
   MX_DSIHOST_DSI_Init();
   MX_LTDC_Init();
-  MX_GFXMMU_Init();
-  /* USER CODE BEGIN 2 */
   MX_GPU2D_Init();
+  MX_USART1_UART_Init();
+  /* USER CODE BEGIN 2 */
   FB_Init();
   if (Board_LCD_BringUp() != HAL_OK)
   {
     Error_Handler();
   }
-  Board_LCD_VerifyMapping();
   MX_HSPI1_Init();
   MX_OCTOSPI1_Init();
   Ospi_Nor_SelfCheck();
@@ -129,7 +128,6 @@ int main(void)
   Hspi_Psram_FullDiag();
 #endif
   Hspi_Psram_ArenaInit();
-  MX_USART1_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */

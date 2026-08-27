@@ -54,6 +54,9 @@ void UsageFault_Handler(void);
 void DebugMon_Handler(void);
 void TIM2_IRQHandler(void);
 void DMA2D_IRQHandler(void);
+void GPU2D_IRQHandler(void);
+void GPU2D_ER_IRQHandler(void);
+void LTDC_IRQHandler(void);
 void LTDC_ER_IRQHandler(void);
 void DSI_IRQHandler(void);
 /* USER CODE BEGIN EFP */

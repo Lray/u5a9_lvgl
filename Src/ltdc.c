@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "ltdc.h"
+#include "framebuffer.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -62,15 +63,15 @@ void MX_LTDC_Init(void)
   pLayerCfg.WindowX0 = 0;
   pLayerCfg.WindowX1 = LCD_WIDTH;
   pLayerCfg.WindowY0 = 1;
-  pLayerCfg.WindowY1 = LCD_HEIGHT;
+  pLayerCfg.WindowY1 = LCD_HEIGHT + 1U;
   pLayerCfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
   pLayerCfg.Alpha = 0xFF;
   pLayerCfg.Alpha0 = 0;
   pLayerCfg.BlendingFactor1 = LTDC_BLENDING_FACTOR1_CA;
   pLayerCfg.BlendingFactor2 = LTDC_BLENDING_FACTOR2_CA;
-  pLayerCfg.FBStartAdress = 0x24000000;
-  pLayerCfg.ImageWidth = 1536;
-  pLayerCfg.ImageHeight = LCD_HEIGHT - 1U;
+  pLayerCfg.FBStartAdress = (uint32_t)(uintptr_t)m_fb0_phys;
+  pLayerCfg.ImageWidth = LCD_WIDTH;
+  pLayerCfg.ImageHeight = FB_HEIGHT;
   pLayerCfg.Backcolor.Blue = 0;
   pLayerCfg.Backcolor.Green = 0;
   pLayerCfg.Backcolor.Red = 0;
@@ -96,6 +97,8 @@ void HAL_LTDC_MspInit(LTDC_HandleTypeDef* ltdcHandle)
     __HAL_RCC_LTDC_CLK_ENABLE();
 
     /* LTDC interrupt Init */
+    HAL_NVIC_SetPriority(LTDC_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(LTDC_IRQn);
     HAL_NVIC_SetPriority(LTDC_ER_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(LTDC_ER_IRQn);
   /* USER CODE BEGIN LTDC_MspInit 1 */
@@ -116,6 +119,7 @@ void HAL_LTDC_MspDeInit(LTDC_HandleTypeDef* ltdcHandle)
     __HAL_RCC_LTDC_CLK_DISABLE();
 
     /* LTDC interrupt Deinit */
+    HAL_NVIC_DisableIRQ(LTDC_IRQn);
     HAL_NVIC_DisableIRQ(LTDC_ER_IRQn);
   /* USER CODE BEGIN LTDC_MspDeInit 1 */
 

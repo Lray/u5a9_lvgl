@@ -25,8 +25,7 @@
 #include "main.h"
 #include "FreeRTOS.h"
 #include "lvgl.h"
-#include "lv_port_display.h"
-#include "lv_draw_dma2d_u5.h"
+#include "drivers/display/st_ltdc/lv_st_ltdc.h"
 #include "perf_profiler.h"
 #include "perf_uart.h"
 #include "app_stats.h"
@@ -66,7 +65,7 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 16 * 1024
+  .stack_size = 128 * 4
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -145,15 +144,7 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN defaultTask */
   lv_init();
   lv_tick_set_cb(xTaskGetTickCount);
-  lv_draw_dma2d_u5_init(); /* project unit: register after lv_init(), before display/tasks (plan §5.1) */
-  lv_port_display_create();
-
-  {
-    /* DMA2D R2M machinery self-test: 64x64 solid green block at (0,0) of the
-     * current back buffer, read back after poll, counter attests the result */
-    extern void u5_dma2d_selftest(void);
-    u5_dma2d_selftest();
-  }
+  lv_st_ltdc_create_direct(m_fb0_phys, m_fb1_phys, 0U);
 
   Bench_Scene_Setup();
 
@@ -196,9 +187,6 @@ static void m3_snapshot(void)
   lv_mem_monitor(&mm);
   s->uptime_ms = xTaskGetTickCount();
   s->phase = g_prof_phase;
-  s->lvgl_frames = g_lv_port_stats.frame_seq;
-  s->swap_submit = g_fb_swap_submit_seq;
-  s->swap_done = g_fb_reload_done_seq;
   s->refr_calls = 0U;
   s->refr_cycles = 0U;
   s->sync_calls = 0U;
@@ -208,16 +196,12 @@ static void m3_snapshot(void)
   m3_slot("lv_display_refr_timer", &s->refr_calls, &s->refr_cycles);
   m3_slot("refr_sync_areas", &s->sync_calls, &s->sync_cycles);
   m3_slot("wait_for_flushing", &s->wait_calls, &s->wait_cycles);
-  s->est_copy_bytes = g_lv_port_stats.est_copy_bytes;
   s->line_events = Board_LCD_GetLineEvents();
   s->idle_percent = perf_idle_percent();
   s->lv_used_max = (uint32_t)mm.max_used;
   s->rtos_heap_free_min = xPortGetMinimumEverFreeHeapSize();
   s->task_stack_hwm = uxTaskGetStackHighWaterMark(NULL);
-  s->err_fb = g_fb_swap_errors;
   s->err_dsi = g_board_lcd_dsi_error_count;
   s->err_ltdc = g_board_lcd_ltdc_error_count;
-  s->err_gfxmmu = g_board_lcd_gfxmmu_error_count;
-  s->front_virtual = g_fb_front_virtual;
 }
 /* USER CODE END Application */

@@ -1,9 +1,7 @@
 #include "perf_uart.h"
-#include "usart1.h"
+#include "usart.h"
 #include "app_stats.h"
 #include "perf_nema_alloc.h"
-#include "lv_draw_dma2d_u5.h"
-#include "framebuffer.h"
 #include "board_lcd.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -13,7 +11,7 @@ perf_uart_stats_t g_perf_uart_stats;
 
 static void perf_uart_task(void *arg)
 {
-  static char line[192];
+  static char line[128];
   uint32_t seq = 0U;
 
   (void)arg;
@@ -23,18 +21,12 @@ static void perf_uart_task(void *arg)
     osDelay(1000U);
 
     int n = snprintf(line, sizeof(line),
-                     "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n",
+                     "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n",
                      (unsigned long)(seq++),
                      (unsigned long)g_m3_stats.uptime_ms,
                      (unsigned long)Board_LCD_GetLineEvents(),
-                     (unsigned long)g_m3_stats.lvgl_frames,
-                     (unsigned long)g_fb_swap_submit_seq,
-                     (unsigned long)g_fb_swap_errors,
                      (unsigned long)g_board_lcd_dsi_error_count,
                      (unsigned long)g_board_lcd_ltdc_error_count,
-                     (unsigned long)g_board_lcd_gfxmmu_error_count,
-                     (unsigned long)g_u5_dma2d_stats.dispatch_count,
-                     (unsigned long)g_u5_dma2d_stats.error_count,
                      (unsigned long)g_nema_alloc_stats.allocs,
                      (unsigned long)g_nema_alloc_stats.frees,
                      (unsigned long)g_nema_alloc_stats.outst_hwm,

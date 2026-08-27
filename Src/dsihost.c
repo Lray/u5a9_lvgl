@@ -86,19 +86,16 @@ void MX_DSIHOST_DSI_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_DSI_ConfigErrorMonitor(&hdsi, HAL_DSI_ERROR_ACK | HAL_DSI_ERROR_TX |
-                                        HAL_DSI_ERROR_ECC | HAL_DSI_ERROR_CRC | HAL_DSI_ERROR_PSE |
-                                        HAL_DSI_ERROR_EOT | HAL_DSI_ERROR_OVF | HAL_DSI_ERROR_GEN |
-                                        HAL_DSI_ERROR_PBU) != HAL_OK)
+  if (HAL_DSI_ConfigErrorMonitor(&hdsi, HAL_DSI_ERROR_NONE) != HAL_OK)
   {
     Error_Handler();
   }
-  VidCfg.ColorCoding = DSI_RGB888;
+  VidCfg.ColorCoding = DSI_RGB565;
   VidCfg.LooselyPacked = DSI_LOOSELY_PACKED_DISABLE;
   VidCfg.Mode = DSI_VID_MODE_BURST;
   VidCfg.PacketSize = 480;
   VidCfg.NumberOfChunks = 0;
-  VidCfg.NullPacketSize = 0xFFFU;
+  VidCfg.NullPacketSize = 0;
   VidCfg.HSPolarity = DSI_HSYNC_ACTIVE_HIGH;
   VidCfg.VSPolarity = DSI_VSYNC_ACTIVE_HIGH;
   VidCfg.DEPolarity = DSI_DATA_ENABLE_ACTIVE_HIGH;
@@ -109,8 +106,8 @@ void MX_DSIHOST_DSI_Init(void)
   VidCfg.VerticalBackPorch = 12;
   VidCfg.VerticalFrontPorch = 50;
   VidCfg.VerticalActive = 481;
-  VidCfg.LPCommandEnable = DSI_LP_COMMAND_ENABLE;
-  VidCfg.LPLargestPacketSize = 64;
+  VidCfg.LPCommandEnable = DSI_LP_COMMAND_DISABLE;
+  VidCfg.LPLargestPacketSize = 0;
   VidCfg.LPVACTLargestPacketSize = 0;
   VidCfg.LPHorizontalFrontPorchEnable = DSI_LP_HFP_ENABLE;
   VidCfg.LPHorizontalBackPorchEnable = DSI_LP_HBP_ENABLE;

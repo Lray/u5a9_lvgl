@@ -3,12 +3,10 @@
 **
 **  File        : STM32U5A9NJHXQ_FLASH.ld
 **
-**  Abstract    : Formal SRAM partition linker (docs/00_plan.md §4.3/§6.4).
+**  Abstract    : Formal SRAM partition linker.
 **                SRAM1/2/3/5 declared as independent MEMORY windows.
 **
-**                M2-A RGB565 phase: .fb0_phys is 384 KiB (RGB565 LUT
-**                footprint 370,256 B + slack). ARGB8888 reproduction phase
-**                used 720 KiB.
+**                RGB565 framebuffers are contiguous 480 x 480 buffers.
 **
 **  Target      : STMicroelectronics STM32U5A9xJ, 4096K FLASH / 2496K main SRAM
 **
@@ -235,7 +233,7 @@ SECTIONS
   } >RUNCTX
   ASSERT(ABSOLUTE(.) <= 0x2019C000, "SRAM3 runtime exceeds [0x20170000,0x2019C000) window")
 
-  /* GFXMMU physical buffer 0: SRAM1, 384 KiB RGB565 (footprint 370,256 B + slack) */
+  /* RGB565 framebuffer 0: SRAM1, 480 x 480 x 2 bytes */
   .fb0_phys (NOLOAD) :
   {
     . = ALIGN(16);
@@ -245,9 +243,9 @@ SECTIONS
     __fb0_phys_end__ = .;
   } >SRAM1
   ASSERT(ADDR(.fb0_phys) == 0x20000000, "fb0_phys not at 0x20000000")
-  ASSERT(SIZEOF(.fb0_phys) <= 393216, "fb0_phys exceeds 384 KiB")
+  ASSERT(SIZEOF(.fb0_phys) <= 460800, "fb0_phys exceeds 480 x 480 RGB565")
 
-/* GFXMMU physical buffer 1: SRAM5, 384 KiB RGB565 */
+/* RGB565 framebuffer 1: SRAM5, 480 x 480 x 2 bytes */
   .fb1_phys (NOLOAD) :
   {
     . = ALIGN(16);
@@ -257,7 +255,7 @@ SECTIONS
     __fb1_phys_end__ = .;
   } >SRAM5
   ASSERT(ADDR(.fb1_phys) == 0x201A0000, "fb1_phys not at 0x201A0000")
-  ASSERT(SIZEOF(.fb1_phys) <= 393216, "fb1_phys exceeds 384 KiB")
+  ASSERT(SIZEOF(.fb1_phys) <= 460800, "fb1_phys exceeds 480 x 480 RGB565")
 
   /* DMA staging: SRAM2, 32 KiB, non-cacheable */
   .dma_nocache (NOLOAD) :

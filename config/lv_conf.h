@@ -230,11 +230,6 @@
 #endif
 
 /*Use TSi's aka (Think Silicon) NemaGFX */
-/* M4: root layer stays SW (GFXMMU 3072-B stride; vendor Nema unit hardcodes
- * 960-B pitch and cannot target it). Nema serves contiguous off-screen layer
- * buffers (transform scene, GPU2D is a GFXMMU-capable graphics master). The
- * project DMA2D unit shields all root tasks from Nema (score 80) and steers
- * them to SW. */
 #define LV_USE_NEMA_GFX 1
 
 #if LV_USE_NEMA_GFX
@@ -246,8 +241,6 @@
         #define LV_NEMA_STM32_HAL_INCLUDE <stm32u5xx_hal.h>
     #endif
 
-    /* Pool sizing source (plan §4.3: 480*480 + 10240 = 240,640 B); vector/mask
-     * paths stay off in M4. */
     #define LV_NEMA_GFX_MAX_RESX 480
     #define LV_NEMA_GFX_MAX_RESY 480
 
@@ -348,15 +341,15 @@
 #endif
 
 /** Accelerate blends, fills, etc. with STM32 DMA2D */
-#define LV_USE_DRAW_DMA2D 0
+#define LV_USE_DRAW_DMA2D 1
 
 #if LV_USE_DRAW_DMA2D
-    #define LV_DRAW_DMA2D_HAL_INCLUDE "stm32h7xx_hal.h"
+    #define LV_DRAW_DMA2D_HAL_INCLUDE "stm32u5xx_hal.h"
 
     /* if enabled, the user is required to call `lv_draw_dma2d_transfer_complete_interrupt_handler`
      * upon receiving the DMA2D global interrupt
      */
-    #define LV_USE_DRAW_DMA2D_INTERRUPT 0
+    #define LV_USE_DRAW_DMA2D_INTERRUPT 1
 #endif
 
 /** Draw using cached OpenGLES textures */
@@ -1294,7 +1287,7 @@
 #define LV_USE_RENESAS_GLCDC    0
 
 /** Driver for ST LTDC */
-#define LV_USE_ST_LTDC    0
+#define LV_USE_ST_LTDC    1
 #if LV_USE_ST_LTDC
     /* Only used for partial. */
     #define LV_ST_LTDC_USE_DMA2D_FLUSH 0

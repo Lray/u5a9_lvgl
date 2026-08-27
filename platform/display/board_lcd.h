@@ -8,10 +8,6 @@ extern "C" {
 #include "stm32u5xx_hal.h"
 
 HAL_StatusTypeDef Board_LCD_BringUp(void);
-void Board_LCD_DiagnosticPatterns(void);
-void Board_LCD_VerifyMapping(void);
-void Board_LCD_FillBack(uint32_t color);
-void Board_LCD_SoakLoop(void);
 uint32_t Board_LCD_GetLineEvents(void);
 uint32_t Board_LCD_GetLastFramePeriod(void);
 
@@ -38,8 +34,6 @@ typedef struct
   uint32_t ltdc_cfbar;
   uint32_t ltdc_cfblr;
   uint32_t ltdc_cfblnr;
-  uint32_t gfxmmu_b0cr;
-  uint32_t gfxmmu_b1cr;
 } Board_LCD_RegSnapshot_t;
 
 extern volatile Board_LCD_RegSnapshot_t g_board_lcd_regs;
@@ -47,8 +41,6 @@ extern volatile uint32_t g_board_lcd_dsi_error_count;
 extern volatile uint32_t g_board_lcd_dsi_last_error;
 extern volatile uint32_t g_board_lcd_ltdc_error_count;
 extern volatile uint32_t g_board_lcd_ltdc_last_error;
-extern volatile uint32_t g_board_lcd_gfxmmu_error_count;
-extern volatile uint32_t g_board_lcd_gfxmmu_last_error;
 
 #ifdef __cplusplus
 }

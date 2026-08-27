@@ -2,24 +2,9 @@
 #include <string.h>
 #include "dsihost.h"
 #include "ltdc.h"
-#include "gfxmmu.h"
 #include "framebuffer.h"
 
-extern uint32_t gfxmmu_lut_config[960];
-
-#define GFXMMU_LUT_SIZE 480U
-
-#define VIRTUAL_BUFFER0_BASE 0x24000000UL
-#define FB_LOGICAL_WIDTH  480UL
-#define FB_LOGICAL_HEIGHT 480UL
-
-#define RGB565_RED   0xF800U
-#define RGB565_GREEN 0x07E0U
-#define RGB565_BLUE  0x001FU
-#define RGB565_WHITE 0xFFFFU
 #define RGB565_BLACK 0x0000U
-
-/* m_fb0_phys / m_fb1_phys owned by framebuffer.c (section .fb0_phys/.fb1_phys) */
 
 volatile uint32_t g_board_lcd_line_events;
 volatile uint32_t g_board_lcd_last_frame_period;
@@ -28,9 +13,6 @@ volatile uint32_t g_board_lcd_dsi_error_count;
 volatile uint32_t g_board_lcd_dsi_last_error;
 volatile uint32_t g_board_lcd_ltdc_error_count;
 volatile uint32_t g_board_lcd_ltdc_last_error;
-volatile uint32_t g_board_lcd_gfxmmu_error_count;
-volatile uint32_t g_board_lcd_gfxmmu_last_error;
-volatile uint32_t g_board_lcd_map_check[6];
 
 static void snapshot_regs(void)
 {
@@ -55,51 +37,11 @@ static void snapshot_regs(void)
   g_board_lcd_regs.ltdc_cfbar = LTDC_Layer1->CFBAR;
   g_board_lcd_regs.ltdc_cfblr = LTDC_Layer1->CFBLR;
   g_board_lcd_regs.ltdc_cfblnr = LTDC_Layer1->CFBLNR;
-  g_board_lcd_regs.gfxmmu_b0cr = GFXMMU->B0CR;
-  g_board_lcd_regs.gfxmmu_b1cr = GFXMMU->B1CR;
-}
-
-static void fill_rect_at(uint32_t base, uint32_t color, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
-{
-  uint16_t *row = (uint16_t *)(base + (y * FB_STRIDE_BYTES) + (x * 2U));
-  for (uint32_t i = 0U; i < h; i++)
-  {
-    for (uint32_t j = 0U; j < w; j++)
-    {
-      row[j] = (uint16_t)color;
-    }
-    row += FB_STRIDE_BYTES / 2U;
-  }
-}
-
-static void fill_rect(uint32_t color, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
-{
-  fill_rect_at(g_fb_back_virtual, color, x, y, w, h);
-}
-
-static uint32_t virt_to_phys(uint32_t x, uint32_t y)
-{
-  uint32_t lo = gfxmmu_lut_config[(y * 2U) + 1U] & 0x003FFFF0U;
-  uint32_t fvb = (gfxmmu_lut_config[y * 2U] >> 8U) & 0xFFU;
-  uint32_t lvb = (gfxmmu_lut_config[y * 2U] >> 16U) & 0xFFU;
-  uint32_t block = fvb + (x / 8U);
-
-  if (block > lvb)
-  {
-    return 0U;
-  }
-  return (uint32_t)m_fb0_phys + ((lo + (fvb * 16U)) & 0x003FFFFFU) + ((block - fvb) * 16U) +
-         ((x % 8U) * 2U);
 }
 
 HAL_StatusTypeDef Board_LCD_BringUp(void)
 {
   RCC_PeriphCLKInitTypeDef clk = {0};
-
-  if (HAL_GFXMMU_DisableLutLines(&hgfxmmu, GFXMMU_LUT_SIZE, 544U) != HAL_OK)
-  {
-    return HAL_ERROR;
-  }
 
   clk.PeriphClockSelection = RCC_PERIPHCLK_DSI;
   clk.DsiClockSelection = RCC_DSICLKSOURCE_DSIPHY;
@@ -235,7 +177,7 @@ HAL_StatusTypeDef Board_LCD_BringUp(void)
   }
   HAL_Delay(120);
 
-  fill_rect_at(VIRTUAL_BUFFER0_BASE, RGB565_BLACK, 0U, 0U, FB_LOGICAL_WIDTH, FB_LOGICAL_HEIGHT);
+  memset(m_fb0_phys, RGB565_BLACK, FB_RGB565_BYTES);
 
   if (HAL_DSI_ShortWrite(&hdsi, 0, DSI_DCS_SHORT_PKT_WRITE_P0, 0x29, 0x00) != HAL_OK)
   {
@@ -253,67 +195,6 @@ HAL_StatusTypeDef Board_LCD_BringUp(void)
   snapshot_regs();
 
   return HAL_LTDC_ProgramLineEvent(&hltdc, 0);
-}
-
-void Board_LCD_VerifyMapping(void)
-{
-  uint32_t i;
-  uint32_t pass = 0U;
-
-  for (i = 0U; i < 6U; i++)
-  {
-    g_board_lcd_map_check[i] = 0U;
-  }
-
-  g_board_lcd_map_check[0] = RGB565_GREEN;
-  fill_rect(g_board_lcd_map_check[0], 240U, 240U, 1U, 1U);
-  g_board_lcd_map_check[1] = *(volatile uint16_t *)virt_to_phys(240U, 240U);
-  if (g_board_lcd_map_check[1] == g_board_lcd_map_check[0])
-  {
-    pass++;
-  }
-
-  g_board_lcd_map_check[2] = RGB565_RED;
-  *(volatile uint16_t *)(VIRTUAL_BUFFER0_BASE + (0U * FB_STRIDE_BYTES) + (200U * 2U)) =
-      (uint16_t)g_board_lcd_map_check[2];
-  if (virt_to_phys(200U, 0U) == 0U)
-  {
-    pass++;
-  }
-  g_board_lcd_map_check[3] =
-      *(volatile uint32_t *)(VIRTUAL_BUFFER0_BASE + (0U * FB_STRIDE_BYTES) + (200U * 2U));
-  if (g_board_lcd_map_check[3] == 0xFF000000UL)
-  {
-    pass++;
-  }
-
-  g_board_lcd_map_check[4] = pass;
-  g_board_lcd_map_check[5] = virt_to_phys(240U, 240U);
-}
-
-void Board_LCD_DiagnosticPatterns(void)
-{
-  static const uint16_t colors[] = {RGB565_RED, RGB565_GREEN, RGB565_BLUE, RGB565_WHITE,
-                                    RGB565_BLACK};
-  const uint16_t black = RGB565_BLACK;
-  const uint16_t white = RGB565_WHITE;
-
-  for (uint32_t c = 0U; c < (sizeof(colors) / sizeof(colors[0])); c++)
-  {
-    fill_rect(colors[c], 0U, 0U, FB_LOGICAL_WIDTH, FB_LOGICAL_HEIGHT);
-    HAL_Delay(3000);
-  }
-
-  for (uint32_t y = 0U; y < FB_LOGICAL_HEIGHT; y += 8U)
-  {
-    for (uint32_t x = 0U; x < FB_LOGICAL_WIDTH; x += 8U)
-    {
-      uint32_t w = ((FB_LOGICAL_WIDTH - x) < 8U) ? (FB_LOGICAL_WIDTH - x) : 8U;
-      uint32_t h = ((FB_LOGICAL_HEIGHT - y) < 8U) ? (FB_LOGICAL_HEIGHT - y) : 8U;
-      fill_rect((((y / 8U) + (x / 8U)) & 1U) ? white : black, x, y, w, h);
-    }
-  }
-  HAL_Delay(3000);
 }
 
 void HAL_LTDC_LineEventCallback(LTDC_HandleTypeDef *hltdc)
@@ -341,46 +222,6 @@ void HAL_LTDC_ErrorCallback(LTDC_HandleTypeDef *hltdc)
 {
   g_board_lcd_ltdc_error_count++;
   g_board_lcd_ltdc_last_error = hltdc->ErrorCode;
-}
-
-void HAL_GFXMMU_ErrorCallback(GFXMMU_HandleTypeDef *hgfxmmu)
-{
-  g_board_lcd_gfxmmu_error_count++;
-  g_board_lcd_gfxmmu_last_error = HAL_GFXMMU_GetError(hgfxmmu);
-}
-
-void Board_LCD_FillBack(uint32_t color)
-{
-  fill_rect(color, 0U, 0U, FB_LOGICAL_WIDTH, FB_LOGICAL_HEIGHT);
-}
-
-void Board_LCD_SoakLoop(void)
-{
-  static const uint16_t bars[7] = {RGB565_WHITE, 0xFFE0U, 0x07FFU, RGB565_GREEN,
-                                   0xF81FU, RGB565_RED, RGB565_BLUE};
-  const uint32_t bar_w = 68U;
-
-  for (;;)
-  {
-    for (uint32_t b = 0U; b < 7U; b++)
-    {
-      fill_rect(bars[b], b * bar_w, 0U, bar_w, FB_LOGICAL_HEIGHT);
-    }
-    fill_rect(RGB565_BLACK, 7U * bar_w, 0U, FB_LOGICAL_WIDTH - (7U * bar_w), FB_LOGICAL_HEIGHT);
-    FB_Submit();
-    while (g_fb_swap_pending != 0U) { }
-    HAL_Delay(2000U);
-
-    for (uint32_t y = 0U; y < FB_LOGICAL_HEIGHT; y++)
-    {
-      uint32_t v = (y * 63U) / (FB_LOGICAL_HEIGHT - 1U);
-      uint16_t gray = (uint16_t)(((v >> 1U) << 11U) | (v << 6U) | (v >> 1U));
-      fill_rect(gray, 0U, y, FB_LOGICAL_WIDTH, 1U);
-    }
-    FB_Submit();
-    while (g_fb_swap_pending != 0U) { }
-    HAL_Delay(2000U);
-  }
 }
 
 uint32_t Board_LCD_GetLineEvents(void)

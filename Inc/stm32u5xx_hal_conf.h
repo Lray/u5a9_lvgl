@@ -45,7 +45,7 @@ extern "C" {
 #define HAL_DSI_MODULE_ENABLED
 /*#define HAL_FDCAN_MODULE_ENABLED */
 /*#define HAL_FMAC_MODULE_ENABLED */
-#define HAL_GFXMMU_MODULE_ENABLED
+/*#define HAL_GFXMMU_MODULE_ENABLED */
 /*#define HAL_GFXTIM_MODULE_ENABLED */
 #define HAL_GPU2D_MODULE_ENABLED
 /*#define HAL_GTZC_MODULE_ENABLED */
@@ -83,7 +83,7 @@ extern "C" {
 #define HAL_UART_MODULE_ENABLED
 /*#define HAL_USART_MODULE_ENABLED */
 /*#define HAL_WWDG_MODULE_ENABLED */
-#define HAL_XSPI_MODULE_ENABLED
+/*#define HAL_XSPI_MODULE_ENABLED */
 #define HAL_GPIO_MODULE_ENABLED
 #define HAL_EXTI_MODULE_ENABLED
 #define HAL_DMA_MODULE_ENABLED
@@ -213,7 +213,7 @@ vary depending on the variations in voltage and temperature.*/
 #define  USE_HAL_IRDA_REGISTER_CALLBACKS       0U /* IRDA register callback disabled      */
 #define  USE_HAL_JPEG_REGISTER_CALLBACKS       0U /* JPEG register callback disabled      */
 #define  USE_HAL_LPTIM_REGISTER_CALLBACKS      0U /* LPTIM register callback disabled     */
-#define  USE_HAL_LTDC_REGISTER_CALLBACKS       0U /* LTDC register callback disabled      */
+#define  USE_HAL_LTDC_REGISTER_CALLBACKS       1U /* LTDC register callback enabled       */
 #define  USE_HAL_MDF_REGISTER_CALLBACKS        0U /* MDF register callback disabled       */
 #define  USE_HAL_MMC_REGISTER_CALLBACKS        0U /* MMC register callback disabled       */
 #define  USE_HAL_NAND_REGISTER_CALLBACKS       0U /* NAND register callback disabled      */
@@ -239,7 +239,6 @@ vary depending on the variations in voltage and temperature.*/
 #define  USE_HAL_USART_REGISTER_CALLBACKS      0U /* USART register callback disabled     */
 #define  USE_HAL_WWDG_REGISTER_CALLBACKS       0U /* WWDG register callback disabled      */
 #define  USE_HAL_OSPI_REGISTER_CALLBACKS       0U /* OSPI register callback disabled      */
-#define  USE_HAL_XSPI_REGISTER_CALLBACKS       0U /* XSPI register callback disabled      */
 /* ################## SPI peripheral configuration ########################## */
 
 /* CRC FEATURE: Use to activate CRC feature inside HAL SPI Driver
