@@ -57,6 +57,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern DMA2D_HandleTypeDef hdma2d;
 extern DSI_HandleTypeDef hdsi;
 extern GPU2D_HandleTypeDef hgpu2d;
 extern LTDC_HandleTypeDef hltdc;
@@ -186,7 +187,7 @@ void DMA2D_IRQHandler(void)
   /* USER CODE BEGIN DMA2D_IRQn 0 */
 
   /* USER CODE END DMA2D_IRQn 0 */
-  lv_draw_dma2d_transfer_complete_interrupt_handler();
+  HAL_DMA2D_IRQHandler(&hdma2d);
   /* USER CODE BEGIN DMA2D_IRQn 1 */
 
   /* USER CODE END DMA2D_IRQn 1 */

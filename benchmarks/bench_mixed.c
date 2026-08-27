@@ -1,6 +1,5 @@
 #include "bench_mixed.h"
 #include "lvgl.h"
-#include "perf_profiler.h"
 
 #define BENCH_MIXED_PHASE_SECS 25U
 
@@ -95,7 +94,6 @@ void Bench_Mixed_Step(uint32_t ticks)
   if (phase != s_phase)
   {
     s_phase = phase;
-    lv_profiler_set_phase((uint8_t)phase);
   }
 
   if (s_phase == 0U)

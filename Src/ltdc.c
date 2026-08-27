@@ -19,7 +19,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "ltdc.h"
-#include "framebuffer.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -63,15 +62,15 @@ void MX_LTDC_Init(void)
   pLayerCfg.WindowX0 = 0;
   pLayerCfg.WindowX1 = LCD_WIDTH;
   pLayerCfg.WindowY0 = 1;
-  pLayerCfg.WindowY1 = LCD_HEIGHT + 1U;
+  pLayerCfg.WindowY1 = LCD_HEIGHT;
   pLayerCfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
   pLayerCfg.Alpha = 0xFF;
   pLayerCfg.Alpha0 = 0;
   pLayerCfg.BlendingFactor1 = LTDC_BLENDING_FACTOR1_CA;
   pLayerCfg.BlendingFactor2 = LTDC_BLENDING_FACTOR2_CA;
-  pLayerCfg.FBStartAdress = (uint32_t)(uintptr_t)m_fb0_phys;
+  pLayerCfg.FBStartAdress = LCD_FRAME_BUFFER;
   pLayerCfg.ImageWidth = LCD_WIDTH;
-  pLayerCfg.ImageHeight = FB_HEIGHT;
+  pLayerCfg.ImageHeight = LCD_HEIGHT;
   pLayerCfg.Backcolor.Blue = 0;
   pLayerCfg.Backcolor.Green = 0;
   pLayerCfg.Backcolor.Red = 0;

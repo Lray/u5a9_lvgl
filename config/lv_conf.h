@@ -1035,7 +1035,7 @@
 
 /** 1: Enable runtime performance profiler */
 #ifndef LV_USE_PROFILER
-#define LV_USE_PROFILER 1
+#define LV_USE_PROFILER 0
 #endif
 #if LV_USE_PROFILER
     /** 1: Enable the built-in profiler */

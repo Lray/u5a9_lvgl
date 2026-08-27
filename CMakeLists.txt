@@ -44,30 +44,15 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    platform/display/board_lcd.c
+    platform/display/lcd.c
     platform/display/framebuffer.c
-    platform/os/freertos_runtime_stats.c
-    platform/perf/perf_profiler.c
-    platform/perf/perf_gpio.c
-    platform/memory/mpu.c
-    platform/memory/hspi_psram.c
-    platform/memory/ospi_nor.c
-    platform/perf/perf_uart.c
-    platform/perf/perf_nema_alloc.c
-    Src/hspi1.c
-    Src/octospi1.c
+    Src/mpu.c
     benchmarks/bench_runner.c
     benchmarks/bench_full_repaint.c
     benchmarks/bench_transform.c
     benchmarks/bench_alpha_layers.c
     benchmarks/bench_text_scroll.c
     benchmarks/bench_mixed.c
-    BSP/STM32U5x9J-DK/stm32u5x9j_discovery_hspi.c
-    BSP/STM32U5x9J-DK/stm32u5x9j_discovery_ospi.c
-    BSP/Components/aps512xx/aps512xx.c
-    BSP/Components/mx25um51245g/mx25um51245g.c
-    Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_xspi.c
-    Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_ll_dlyb.c
 )
 
 # LVGL v9.3.0 (official release tree, configured via config/lv_conf.h)
@@ -83,7 +68,6 @@ target_include_directories(lvgl PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Inc
     ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS/Source/include
     ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM33_NTZ/non_secure
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/perf
     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/libs/nema_gfx/include
     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/src
     ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32U5xx_HAL_Driver/Inc
@@ -99,26 +83,10 @@ set(NEMA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/libs/nema_gfx/lib/core/
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/display
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/perf
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/os
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/graphics
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/memory
     ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks
     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/src
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/STM32U5x9J-DK
 )
-
-# Optional perf probe module (plan §5.2: default off, never in acceptance)
-option(PERF_GPIO_EN "Optional perf GPIO probe module" OFF)
-if(PERF_GPIO_EN)
-    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE PERF_GPIO_EN=1)
-endif()
-
-# Optional PSRAM 64 MiB full-coverage boot diagnostic (plan §7 M5 上板验证 #1)
-option(PSRAM_FULL_DIAG "PSRAM full-walk boot diagnostic (delays boot ~10-20 s)" OFF)
-if(PSRAM_FULL_DIAG)
-    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE PSRAM_FULL_DIAG=1)
-endif()
 
 # Benchmark scene selection (plan §5.3; default mixed = legacy demo behavior)
 set(BENCH_SCENE "mixed" CACHE STRING "benchmark scene: mixed|full_repaint|transform|alpha|text")
@@ -139,12 +107,6 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Remove wrong libob.a library dependency when using cpp files
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
-
-# Nema allocator statistics via symbol wrapping (plan §7 M5; map must show __wrap bindings)
-target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
-    -Wl,--wrap=tsi_malloc_pool
-    -Wl,--wrap=tsi_free
-)
 
 # Add linked libraries (--group: lvgl and the precompiled NemaGFX library
 # reference each other; single-pass archive scan would miss the back-references)

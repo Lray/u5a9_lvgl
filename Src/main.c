@@ -24,19 +24,13 @@
 #include "gpu2d.h"
 #include "icache.h"
 #include "ltdc.h"
-#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "board_lcd.h"
+#include "lcd.h"
 #include "framebuffer.h"
 #include "gpu2d.h"
-#include "hspi1.h"
-#include "octospi1.h"
-#include "mpu.h"
-#include "hspi_psram.h"
-#include "ospi_nor.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -64,6 +58,7 @@
 void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
 static void SystemPower_Config(void);
+static void MPU_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -87,6 +82,9 @@ int main(void)
 
   /* MCU Configuration--------------------------------------------------------*/
 
+  /* MPU Configuration--------------------------------------------------------*/
+  MPU_Config();
+
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
@@ -104,30 +102,21 @@ int main(void)
   PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
-  MX_MPU_Config();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA2D_Init();
-  MX_ICACHE_Init();
   MX_DSIHOST_DSI_Init();
   MX_LTDC_Init();
   MX_GPU2D_Init();
-  MX_USART1_UART_Init();
+  MX_ICACHE_Init();
   /* USER CODE BEGIN 2 */
   FB_Init();
-  if (Board_LCD_BringUp() != HAL_OK)
+  if (LCD_Init() != HAL_OK)
   {
     Error_Handler();
   }
-  MX_HSPI1_Init();
-  MX_OCTOSPI1_Init();
-  Ospi_Nor_SelfCheck();
-#if defined(PSRAM_FULL_DIAG)
-  Hspi_Psram_FullDiag();
-#endif
-  Hspi_Psram_ArenaInit();
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -260,6 +249,51 @@ static void SystemPower_Config(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
+
+ /* MPU Configuration */
+
+static void MPU_Config(void)
+{
+  MPU_Region_InitTypeDef MPU_InitStruct = {0};
+  MPU_Attributes_InitTypeDef MPU_AttributesInit = {0};
+
+  /* Disables the MPU */
+  HAL_MPU_Disable();
+
+  /** Initializes and configures the Region 0 and the memory to be protected
+  */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER0;
+  MPU_InitStruct.BaseAddress = 0x20000000;
+  MPU_InitStruct.LimitAddress = 0x200707FF;
+  MPU_InitStruct.AttributesIndex = MPU_ATTRIBUTES_NUMBER0;
+  MPU_InitStruct.AccessPermission = MPU_REGION_ALL_RW;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_INNER_SHAREABLE;
+
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+  /** Initializes and configures the Region 2 and the memory to be protected
+  */
+  MPU_InitStruct.Number = MPU_REGION_NUMBER2;
+  MPU_InitStruct.BaseAddress = 0x0;
+  MPU_InitStruct.LimitAddress = 0x0;
+  MPU_InitStruct.AccessPermission = MPU_REGION_PRIV_RW;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
+
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+  /** Initializes and configures the Attribute 0 and the memory to be protected
+  */
+  MPU_AttributesInit.Number = MPU_ATTRIBUTES_NUMBER0;
+  MPU_AttributesInit.Attributes = INNER_OUTER(MPU_NOT_CACHEABLE);
+
+  HAL_MPU_ConfigMemoryAttributes(&MPU_AttributesInit);
+  /* Enables the MPU */
+  HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+
+}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
