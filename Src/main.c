@@ -24,13 +24,12 @@
 #include "gpu2d.h"
 #include "icache.h"
 #include "ltdc.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "lcd.h"
-#include "framebuffer.h"
-#include "gpu2d.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -110,13 +109,10 @@ int main(void)
   MX_DSIHOST_DSI_Init();
   MX_LTDC_Init();
   MX_GPU2D_Init();
+  MX_USART1_UART_Init();
   MX_ICACHE_Init();
   /* USER CODE BEGIN 2 */
-  FB_Init();
-  if (LCD_Init() != HAL_OK)
-  {
-    Error_Handler();
-  }
+
   /* USER CODE END 2 */
 
   /* Init scheduler */

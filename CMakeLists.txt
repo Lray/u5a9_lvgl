@@ -42,20 +42,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
 
-# Add sources to executable
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    platform/display/lcd.c
-    platform/display/framebuffer.c
-    Src/mpu.c
-    benchmarks/bench_runner.c
-    benchmarks/bench_full_repaint.c
-    benchmarks/bench_transform.c
-    benchmarks/bench_alpha_layers.c
-    benchmarks/bench_text_scroll.c
-    benchmarks/bench_mixed.c
-)
-
-# LVGL v9.3.0 (official release tree, configured via config/lv_conf.h)
+# LVGL v9.3.0 vendor tree (official release, configured via config/lv_conf.h)
 set(LV_BUILD_CONF_PATH ${CMAKE_CURRENT_SOURCE_DIR}/config/lv_conf.h CACHE PATH "" FORCE)
 set(CONFIG_LV_BUILD_DEMOS OFF CACHE BOOL "" FORCE)
 set(CONFIG_LV_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -63,7 +50,7 @@ set(CONFIG_LV_USE_THORVG_INTERNAL OFF CACHE BOOL "" FORCE)
 add_subdirectory(ThirdParty/LVGL)
 
 # LV_OS_FREERTOS needs kernel headers inside lvgl TUs (lv_freertos.h);
-# Nema STM32 HAL glue needs the device HAL headers
+# Nema/DMA2D vendor glue needs the device HAL headers
 target_include_directories(lvgl PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Inc
     ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS/Source/include
@@ -77,28 +64,8 @@ target_include_directories(lvgl PUBLIC
 )
 target_compile_definitions(lvgl PUBLIC STM32U5A9xx USE_HAL_DRIVER)
 
-# NemaGFX precompiled library (cortex_m33_revC, hard-float; plan §7 M4)
+# NemaGFX precompiled library (cortex_m33_revC, hard-float)
 set(NEMA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/libs/nema_gfx/lib/core/cortex_m33_revC/gcc/libnemagfx-float-abi-hard.a)
-
-# Add include paths
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/display
-    ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks
-    ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/STM32U5x9J-DK
-)
-
-# Benchmark scene selection (plan §5.3; default mixed = legacy demo behavior)
-set(BENCH_SCENE "mixed" CACHE STRING "benchmark scene: mixed|full_repaint|transform|alpha|text")
-if(BENCH_SCENE STREQUAL "full_repaint")
-    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE BENCH_SCENE_FULL_REPAINT=1)
-elseif(BENCH_SCENE STREQUAL "transform")
-    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE BENCH_SCENE_TRANSFORM=1)
-elseif(BENCH_SCENE STREQUAL "alpha")
-    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE BENCH_SCENE_ALPHA=1)
-elseif(BENCH_SCENE STREQUAL "text")
-    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE BENCH_SCENE_TEXT=1)
-endif()
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE

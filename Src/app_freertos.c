@@ -23,10 +23,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "FreeRTOS.h"
-#include "bench_runner.h"
-#include "drivers/display/st_ltdc/lv_st_ltdc.h"
-#include "framebuffer.h"
-#include "lvgl.h"
 #include "main.h"
 /* USER CODE END Includes */
 
@@ -55,9 +51,10 @@ uint8_t ucHeap[configTOTAL_HEAP_SIZE]
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
-    .name = "defaultTask",
-    .priority = (osPriority_t)osPriorityNormal,
-    .stack_size = 128 * 4};
+  .name = "defaultTask",
+  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 128 * 4
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -82,10 +79,10 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, char *pcTaskName) {
 /* USER CODE END 4 */
 
 /**
- * @brief  FreeRTOS initialization
- * @param  None
- * @retval None
- */
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
 
@@ -107,12 +104,16 @@ void MX_FREERTOS_Init(void) {
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
   /* creation of defaultTask */
-  defaultTaskHandle =
-      osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
+
 }
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
@@ -121,22 +122,19 @@ void MX_FREERTOS_Init(void) {
  * @retval None
  */
 /* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument) {
+void StartDefaultTask(void *argument)
+{
   /* USER CODE BEGIN defaultTask */
-  lv_init();
-  lv_tick_set_cb(xTaskGetTickCount);
-  lv_st_ltdc_create_direct(m_fb0_phys, m_fb1_phys, 0U);
-
-  Bench_Scene_Setup();
-
   /* Infinite loop */
-  while (1) {
-    uint32_t ticks = xTaskGetTickCount();
-
-    Bench_Scene_Step(ticks);
-
-    lv_timer_handler();
-    osDelay(2);
+  for (;;)
+  {
+    osDelay(1);
   }
   /* USER CODE END defaultTask */
 }
+
+/* Private application code --------------------------------------------------*/
+/* USER CODE BEGIN Application */
+
+/* USER CODE END Application */
+
