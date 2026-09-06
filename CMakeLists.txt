@@ -40,6 +40,16 @@ add_subdirectory(cmake/stm32cubemx)
 # Panel bring-up (BSP-derived, not CubeMX-generatable)
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE Src/lcd_panel.c)
 
+# The BSP owns I2C5 initialization; keep its HAL dependency across CubeMX regeneration.
+target_compile_definitions(stm32cubemx INTERFACE HAL_I2C_MODULE_ENABLED)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE BSP/STM32U5x9J-DK)
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    BSP/STM32U5x9J-DK/stm32u5x9j_discovery_ts.c
+    BSP/STM32U5x9J-DK/stm32u5x9j_discovery_bus.c
+    BSP/Components/sitronix/sitronix.c
+    BSP/Components/sitronix/sitronix_reg.c
+)
+
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths

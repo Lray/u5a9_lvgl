@@ -38,13 +38,13 @@ ENTRY(Reset_Handler)
 
 
 /* Memories definition */
-/* FB_RAM holds the two RGB565 480x481 direct-mode framebuffers; its origin
+/* FB_RAM holds the two RGB565 480x480 direct-mode framebuffers; its origin
  * must equal the CubeMX user constant LCD_FRAME_BUFFER (LTDC CFBAR).
  * Per the LVGL STM32 LTDC driver doc: FB_RAM + RAM = total RAM (2496K). */
 MEMORY
 {
-  FB_RAM (xrw) : ORIGIN = 0x20000000, LENGTH = 902K
-  RAM (xrw)    : ORIGIN = 0x200E1800, LENGTH = 1594K
+  FB_RAM (xrw) : ORIGIN = 0x20000000, LENGTH = 900K
+  RAM (xrw)    : ORIGIN = 0x200E1000, LENGTH = 1596K
   SRAM4 (xrw)  : ORIGIN = 0x28000000, LENGTH = 16K
   FLASH (rx)   : ORIGIN = 0x08000000, LENGTH = 4096K
 }

@@ -68,7 +68,7 @@ void Error_Handler(void);
 #define IMAGE_HEIGHT 240
 #define HBP 1
 #define IMAGE_WIDTH 320
-#define LCD_HEIGHT 481
+#define LCD_HEIGHT 480
 #define HSYNC 2
 
 /* USER CODE BEGIN Private defines */

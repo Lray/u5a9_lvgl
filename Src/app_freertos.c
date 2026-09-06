@@ -27,6 +27,7 @@
 #include "lv_demos.h"
 #include "lvgl.h"
 #include "main.h"
+#include "stm32u5x9j_discovery_ts.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,6 +68,7 @@ const osThreadAttr_t defaultTask_attributes = {
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
+static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data);
 /* USER CODE END FunctionPrototypes */
 
 /* USER CODE BEGIN 5 */
@@ -136,7 +138,26 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN defaultTask */
   lv_init();
   lv_tick_set_cb(HAL_GetTick);
-  lv_st_ltdc_create_direct(s_fb0, s_fb1, 0U);
+  lv_display_t *display = lv_st_ltdc_create_direct(s_fb0, s_fb1, 0U);
+  TS_Init_t touch_init = {
+    .Width = LCD_WIDTH,
+    .Height = LCD_HEIGHT,
+    .Orientation = TS_ORIENTATION_PORTRAIT,
+    .Accuracy = 0U
+  };
+  if (BSP_TS_Init(0U, &touch_init) != BSP_ERROR_NONE)
+  {
+    Error_Handler();
+  }
+  lv_indev_t *touch = lv_indev_create();
+  if (touch == NULL)
+  {
+    Error_Handler();
+  }
+  lv_indev_set_type(touch, LV_INDEV_TYPE_POINTER);
+  lv_indev_set_display(touch, display);
+  lv_indev_set_read_cb(touch, touch_read_cb);
+  lv_timer_set_period(lv_indev_get_read_timer(touch), 10U);
   lv_demo_benchmark();
   /* Infinite loop */
   for (;;)
@@ -149,6 +170,21 @@ void StartDefaultTask(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+/* Called by lv_timer_handler() in the LVGL task (LVGL 9.3 input-device guide). */
+static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
+{
+  TS_State_t state;
+  (void)indev;
 
+  /* LVGL supplies the last valid point on release; ignore BSP startup coordinates. */
+  data->state = LV_INDEV_STATE_RELEASED;
+  if (BSP_TS_GetState(0U, &state) == BSP_ERROR_NONE && state.TouchDetected != 0U &&
+      state.TouchX < LCD_WIDTH && state.TouchY < LCD_HEIGHT)
+  {
+    data->point.x = (int32_t)state.TouchX;
+    data->point.y = (int32_t)state.TouchY;
+    data->state = LV_INDEV_STATE_PRESSED;
+  }
+}
 /* USER CODE END Application */
 

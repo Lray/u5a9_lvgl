@@ -2367,7 +2367,8 @@ static int32_t I2C5_ReadReg(uint16_t DevAddr, uint16_t Reg, uint16_t MemAddSize,
   */
 static int32_t I2C5_Recv(uint16_t DevAddr, uint8_t *pData, uint16_t Length)
 {
-  if (HAL_I2C_Master_Receive(&hbus_i2c5, DevAddr, pData, Length, 10000) == HAL_OK)
+  /* Touch polling runs in the GUI task; use a 10 ms transfer timeout. */
+  if (HAL_I2C_Master_Receive(&hbus_i2c5, DevAddr, pData, Length, 10U) == HAL_OK)
   {
     return BSP_ERROR_NONE;
   }
@@ -2825,4 +2826,3 @@ static int32_t I2C3_Send(uint16_t DevAddr, uint8_t *pData, uint16_t Length)
 /**
   * @}
   */
-

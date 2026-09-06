@@ -62,7 +62,7 @@ void MX_LTDC_Init(void)
   pLayerCfg.WindowX0 = 0;
   pLayerCfg.WindowX1 = LCD_WIDTH;
   pLayerCfg.WindowY0 = 1;
-  pLayerCfg.WindowY1 = LCD_HEIGHT;
+  pLayerCfg.WindowY1 = LCD_HEIGHT + 1;
   pLayerCfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
   pLayerCfg.Alpha = 0xFF;
   pLayerCfg.Alpha0 = 0;
