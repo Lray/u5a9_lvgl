@@ -1010,7 +1010,7 @@
 #endif
 #if LV_USE_SYSMON
     /** Get the idle percentage. E.g. uint32_t my_get_idle(void); */
-    #define LV_SYSMON_GET_IDLE perf_idle_percent
+    #define LV_SYSMON_GET_IDLE lv_os_get_idle_percent
 
     /** 1: Show CPU usage and FPS count.
      *  - Requires `LV_USE_SYSMON = 1` */
@@ -1287,7 +1287,7 @@
 #define LV_USE_RENESAS_GLCDC    0
 
 /** Driver for ST LTDC */
-#define LV_USE_ST_LTDC    0
+#define LV_USE_ST_LTDC    1
 #if LV_USE_ST_LTDC
     /* Only used for partial. */
     #define LV_ST_LTDC_USE_DMA2D_FLUSH 0
@@ -1331,17 +1331,17 @@
 
 #if LV_BUILD_DEMOS
     /** Show some widgets. This might be required to increase `LV_MEM_SIZE`. */
-    #define LV_USE_DEMO_WIDGETS 0
+    #define LV_USE_DEMO_WIDGETS 1
     
     /** Demonstrate usage of encoder and keyboard. */
     #define LV_USE_DEMO_KEYPAD_AND_ENCODER 0
     
     /** Benchmark your system */
-    #define LV_USE_DEMO_BENCHMARK 0
+    #define LV_USE_DEMO_BENCHMARK 1
 
     #if LV_USE_DEMO_BENCHMARK
         /** Use fonts where bitmaps are aligned 16 byte and has Nx16 byte stride */
-        #define LV_DEMO_BENCHMARK_ALIGNED_FONTS 0
+        #define LV_DEMO_BENCHMARK_ALIGNED_FONTS 1
     #endif
 
     /** Render test for each primitive.

@@ -38,11 +38,15 @@ ENTRY(Reset_Handler)
 
 
 /* Memories definition */
+/* FB_RAM holds the two RGB565 480x481 direct-mode framebuffers; its origin
+ * must equal the CubeMX user constant LCD_FRAME_BUFFER (LTDC CFBAR).
+ * Per the LVGL STM32 LTDC driver doc: FB_RAM + RAM = total RAM (2496K). */
 MEMORY
 {
-  RAM (xrw)   : ORIGIN = 0x20000000, LENGTH = 2496K
-  SRAM4 (xrw) : ORIGIN = 0x28000000, LENGTH = 16K
-  FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 4096K
+  FB_RAM (xrw) : ORIGIN = 0x20000000, LENGTH = 902K
+  RAM (xrw)    : ORIGIN = 0x200E1800, LENGTH = 1594K
+  SRAM4 (xrw)  : ORIGIN = 0x28000000, LENGTH = 16K
+  FLASH (rx)   : ORIGIN = 0x08000000, LENGTH = 4096K
 }
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM) + LENGTH(RAM); /* end of "RAM" Ram type memory */
@@ -194,6 +198,20 @@ SECTIONS
 
   PROVIDE( __bss_start = __tbss_start );
   PROVIDE( __bss_size = __bss_end - __bss_start );
+
+  /* LVGL direct-mode double framebuffers (LVGL STM32 LTDC driver doc) */
+  .fb0 (NOLOAD) :
+  {
+    KEEP(*(.fb0))
+  } >FB_RAM
+
+  .fb1 (NOLOAD) :
+  {
+    KEEP(*(.fb1))
+  } >FB_RAM
+
+  ASSERT(ADDR(.fb0) == ORIGIN(FB_RAM), "fb0 must start at FB_RAM origin (LCD_FRAME_BUFFER)")
+  ASSERT(ADDR(.fb1) == ADDR(.fb0) + SIZEOF(.fb0), "fb1 must directly follow fb0")
 
 
   /* User_heap_stack section, used to check that there is enough "RAM" Ram type memory left */

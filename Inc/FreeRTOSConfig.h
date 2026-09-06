@@ -168,6 +168,11 @@ header file. */
 #undef configTOTAL_HEAP_SIZE
 #define configTOTAL_HEAP_SIZE                        ((size_t)131072)
 #define configGENERATE_RUN_TIME_STATS                0
+/* LVGL OSAL idle monitor (osal/lv_freertos.h) */
+extern void lv_freertos_task_switch_in(const char * name);
+extern void lv_freertos_task_switch_out(void);
+#define traceTASK_SWITCHED_IN()                      lv_freertos_task_switch_in(pxCurrentTCB->pcTaskName)
+#define traceTASK_SWITCHED_OUT()                     lv_freertos_task_switch_out()
 /* USER CODE END Defines */
 
 #endif /* __FREERTOS_CONFIG_H */

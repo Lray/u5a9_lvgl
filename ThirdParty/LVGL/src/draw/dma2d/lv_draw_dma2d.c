@@ -372,7 +372,10 @@ static int32_t dispatch_cb(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
         const lv_area_t * coords = &t->area;
         lv_area_t clipped_coords;
         if(!lv_area_intersect(&clipped_coords, coords, &t->clip_area)) {
-            return LV_DRAW_UNIT_IDLE;
+            t->state = LV_DRAW_TASK_STATE_READY;
+            draw_dma2d_unit->task_act = NULL;
+            lv_draw_dispatch_request();
+            return 1;
         }
 
         void * dest = lv_draw_layer_go_to_xy(layer,
@@ -399,7 +402,10 @@ static int32_t dispatch_cb(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
         const lv_area_t * coords = &t->area;
         lv_area_t clipped_coords;
         if(!lv_area_intersect(&clipped_coords, coords, &t->clip_area)) {
-            return LV_DRAW_UNIT_IDLE;
+            t->state = LV_DRAW_TASK_STATE_READY;
+            draw_dma2d_unit->task_act = NULL;
+            lv_draw_dispatch_request();
+            return 1;
         }
 
         void * dest = lv_draw_layer_go_to_xy(layer,
@@ -445,7 +451,7 @@ static void thread_cb(void * arg)
 
         do {
             lv_thread_sync_wait(&u->interrupt_signal);
-        } while(u->task_act != NULL);
+        } while(u->task_act == NULL);
 
         post_transfer_tasks(u);
         lv_draw_dispatch_request();

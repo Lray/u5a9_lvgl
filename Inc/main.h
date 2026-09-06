@@ -60,7 +60,7 @@ void Error_Handler(void);
 #define VFP 50
 #define LCD_WIDTH 480
 #define VBP 12
-#define LCD_FRAME_BUFFER 0x200D0000
+#define LCD_FRAME_BUFFER 0x20000000
 #define HACT 480
 #define VSYNC 1
 #define HFP 1
