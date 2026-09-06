@@ -23,6 +23,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "FreeRTOS.h"
+#include "drivers/display/st_ltdc/lv_st_ltdc.h"
+#include "lv_demos.h"
+#include "lvgl.h"
 #include "main.h"
 /* USER CODE END Includes */
 
@@ -47,13 +50,19 @@
 uint8_t ucHeap[configTOTAL_HEAP_SIZE]
     __attribute__((section(".freertos_heap"), aligned(16)));
 
+/* LVGL direct-mode double framebuffers (LVGL STM32 LTDC driver doc) */
+static uint8_t s_fb0[LCD_WIDTH * LCD_HEIGHT * LV_COLOR_DEPTH / 8]
+    __attribute__((section(".fb0"), aligned(32)));
+static uint8_t s_fb1[LCD_WIDTH * LCD_HEIGHT * LV_COLOR_DEPTH / 8]
+    __attribute__((section(".fb1"), aligned(32)));
+
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 128 * 4
+  .stack_size = 1024 * 16
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -125,10 +134,15 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN defaultTask */
+  lv_init();
+  lv_tick_set_cb(HAL_GetTick);
+  lv_st_ltdc_create_direct(s_fb0, s_fb1, 0U);
+  lv_demo_benchmark();
   /* Infinite loop */
   for (;;)
   {
-    osDelay(1);
+    lv_timer_handler();
+    osDelay(2);
   }
   /* USER CODE END defaultTask */
 }
