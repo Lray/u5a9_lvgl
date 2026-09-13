@@ -30,9 +30,12 @@
 #include <sys/time.h>
 #include <sys/times.h>
 
+#include "usart.h"
+
+#define USART1_WRITE_TIMEOUT_MS 1000U
+
 
 /* Variables */
-extern int __io_putchar(int ch) __attribute__((weak));
 extern int __io_getchar(void) __attribute__((weak));
 
 
@@ -41,6 +44,18 @@ char **environ = __env;
 
 
 /* Functions */
+int __io_putchar(int ch)
+{
+  uint8_t byte = (uint8_t)ch;
+
+  if (HAL_UART_Transmit(&huart1, &byte, 1U, USART1_WRITE_TIMEOUT_MS) != HAL_OK)
+  {
+    return EOF;
+  }
+
+  return ch;
+}
+
 void initialise_monitor_handles()
 {
 }

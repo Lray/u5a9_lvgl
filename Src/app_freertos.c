@@ -26,8 +26,12 @@
 #include "drivers/display/st_ltdc/lv_st_ltdc.h"
 #include "lv_demos.h"
 #include "lvgl.h"
+#if LV_USE_PROFILER && LV_USE_PROFILER_BUILTIN
+#include "misc/lv_profiler_builtin_private.h"
+#endif
 #include "main.h"
 #include "stm32u5x9j_discovery_ts.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -138,6 +142,13 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN defaultTask */
   lv_init();
   lv_tick_set_cb(HAL_GetTick);
+#if LV_USE_PROFILER && LV_USE_PROFILER_BUILTIN
+  lv_profiler_builtin_config_t profiler_config;
+  lv_profiler_builtin_config_init(&profiler_config);
+  profiler_config.flush_cb = NULL;
+  lv_profiler_builtin_uninit();
+  lv_profiler_builtin_init(&profiler_config);
+#endif
   lv_display_t *display = lv_st_ltdc_create_direct(s_fb0, s_fb1, 0U);
   TS_Init_t touch_init = {
     .Width = LCD_WIDTH,
@@ -159,18 +170,22 @@ void StartDefaultTask(void *argument)
   lv_indev_set_read_cb(touch, touch_read_cb);
   lv_timer_set_period(lv_indev_get_read_timer(touch), 10U);
   lv_demo_benchmark();
+  printf("Lvgl\n");
   /* Infinite loop */
   for (;;)
   {
-    lv_timer_handler();
-    osDelay(2);
+    
+    uint32_t delay_ms = lv_timer_handler();
+    if (delay_ms == LV_NO_TIMER_READY) {
+      delay_ms = LV_DEF_REFR_PERIOD;
+    }
+    osDelay(delay_ms == 0U ? 1U : delay_ms);
   }
   /* USER CODE END defaultTask */
 }
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-/* Called by lv_timer_handler() in the LVGL task (LVGL 9.3 input-device guide). */
 static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
   TS_State_t state;

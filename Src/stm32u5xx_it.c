@@ -23,7 +23,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "lvgl.h"
+#if LV_USE_DRAW_DMA2D
 #include "draw/dma2d/lv_draw_dma2d.h"
+#endif
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -189,7 +191,9 @@ void DMA2D_IRQHandler(void)
   /* USER CODE END DMA2D_IRQn 0 */
   HAL_DMA2D_IRQHandler(&hdma2d);
   /* USER CODE BEGIN DMA2D_IRQn 1 */
+#if LV_USE_DRAW_DMA2D
   lv_draw_dma2d_transfer_complete_interrupt_handler();
+#endif
   /* USER CODE END DMA2D_IRQn 1 */
 }
 

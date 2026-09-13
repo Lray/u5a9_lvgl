@@ -26,6 +26,7 @@
 #include "ltdc.h"
 #include "usart.h"
 #include "gpio.h"
+#include <stdio.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -111,6 +112,9 @@ int main(void)
   MX_DSIHOST_DSI_Init();
   MX_GPU2D_Init();
   MX_USART1_UART_Init();
+  /* LVGL's official benchmark summary uses LV_LOG -> vprintf().  Keep
+     stdout unbuffered so the report reaches USART1 before the task loops. */
+  setvbuf(stdout, NULL, _IONBF, 0);
   MX_ICACHE_Init();
   /* USER CODE BEGIN 2 */
   if (LCD_Panel_Init() != HAL_OK)

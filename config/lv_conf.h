@@ -88,7 +88,7 @@
  *====================*/
 
 /** Default display refresh, input device read and animation step period. */
-#define LV_DEF_REFR_PERIOD  33      /**< [ms] */
+#define LV_DEF_REFR_PERIOD  12      /**< [ms] */
 
 /** Default Dots Per Inch. Used to initialize default sizes such as widgets sized, style paddings.
  * (Not so important, you can adjust it to modify default sizes and spaces.) */
@@ -364,7 +364,7 @@
  *-----------*/
 
 /** Enable log module */
-#define LV_USE_LOG 0
+#define LV_USE_LOG 1
 #if LV_USE_LOG
     /** Set value to one of the following levels of logging detail:
      *  - LV_LOG_LEVEL_TRACE    Log detailed information.
@@ -377,7 +377,7 @@
 
     /** - 1: Print log with 'printf';
      *  - 0: User needs to register a callback with `lv_log_register_print_cb()`. */
-    #define LV_LOG_PRINTF 0
+    #define LV_LOG_PRINTF 1
 
     /** Set callback to print logs.
      *  E.g `my_print`. The prototype should be `void my_print(lv_log_level_t level, const char * buf)`.
@@ -545,7 +545,7 @@
 
 /** Will be added where memory needs to be aligned (with -Os data might not be aligned to boundary by default).
  *  E.g. __attribute__((aligned(4)))*/
-#define LV_ATTRIBUTE_MEM_ALIGN
+#define LV_ATTRIBUTE_MEM_ALIGN __attribute__((aligned(16)))
 
 /** Attribute to mark large constant arrays, for example for font bitmaps */
 #define LV_ATTRIBUTE_LARGE_CONST
@@ -1039,7 +1039,7 @@
 #endif
 #if LV_USE_PROFILER
     /** 1: Enable the built-in profiler */
-    #define LV_USE_PROFILER_BUILTIN 0
+    #define LV_USE_PROFILER_BUILTIN 1
     #if LV_USE_PROFILER_BUILTIN
         /** Default profiler trace buffer size */
         #define LV_PROFILER_BUILTIN_BUF_SIZE (16 * 1024)     /**< [bytes] */
@@ -1047,19 +1047,19 @@
     #endif
 
     /** Header to include for profiler */
-    #define LV_PROFILER_INCLUDE "lv_profiler_backend.h"
+    #define LV_PROFILER_INCLUDE "lv_profiler_builtin.h"
 
     /** Profiler start point function */
-    #define LV_PROFILER_BEGIN    LV_PROFILER_BACKEND_BEGIN
+    #define LV_PROFILER_BEGIN    LV_PROFILER_BUILTIN_BEGIN
 
     /** Profiler end point function */
-    #define LV_PROFILER_END      LV_PROFILER_BACKEND_END
+    #define LV_PROFILER_END      LV_PROFILER_BUILTIN_END
 
     /** Profiler start point function with custom tag */
-    #define LV_PROFILER_BEGIN_TAG LV_PROFILER_BACKEND_BEGIN_TAG
+    #define LV_PROFILER_BEGIN_TAG LV_PROFILER_BUILTIN_BEGIN_TAG
 
     /** Profiler end point function with custom tag */
-    #define LV_PROFILER_END_TAG   LV_PROFILER_BACKEND_END_TAG
+    #define LV_PROFILER_END_TAG   LV_PROFILER_BUILTIN_END_TAG
 
     /*Enable layout profiler*/
     #define LV_PROFILER_LAYOUT 0
@@ -1068,7 +1068,7 @@
     #define LV_PROFILER_REFR 1
 
     /*Enable draw profiler*/
-    #define LV_PROFILER_DRAW 0
+    #define LV_PROFILER_DRAW 1
 
     /*Enable indev profiler*/
     #define LV_PROFILER_INDEV 0
