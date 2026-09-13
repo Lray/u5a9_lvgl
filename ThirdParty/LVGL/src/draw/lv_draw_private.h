@@ -81,6 +81,10 @@ struct _lv_draw_task_t {
      */
     uint8_t preference_score;
 
+#if LV_DRAW_SCHED_TRACE
+    uint8_t trace_scene_id;
+#endif
+
 };
 
 struct _lv_draw_mask_t {

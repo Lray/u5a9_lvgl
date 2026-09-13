@@ -39,6 +39,7 @@
 #include "lv_draw_nema_gfx.h"
 #include "../../font/lv_font.h"
 #include "../../font/lv_font_fmt_txt.h"
+#include "draw_sched_trace.h"
 
 /*********************
  *      DEFINES
@@ -278,6 +279,9 @@ static int32_t nema_gfx_dispatch(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
 
     t->state = LV_DRAW_TASK_STATE_IN_PROGRESS;
     draw_nema_gfx_unit->task_act = t;
+#if LV_DRAW_SCHED_TRACE
+    draw_sched_trace_task_exec(t, DRAW_SCHED_TRACE_RENDERER_NEMA_GFX);
+#endif
 
 #if LV_USE_OS
     /* Let the render thread work. */

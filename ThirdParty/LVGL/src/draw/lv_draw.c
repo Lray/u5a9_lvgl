@@ -21,6 +21,7 @@
 #include "../core/lv_global.h"
 #include "../core/lv_refr_private.h"
 #include "../stdlib/lv_string.h"
+#include "draw_sched_trace.h"
 
 /*********************
  *      DEFINES
@@ -113,6 +114,9 @@ lv_draw_task_t * lv_draw_add_task(lv_layer_t * layer, const lv_area_t * coords, 
     new_task->type = type;
     new_task->draw_dsc = (uint8_t *)new_task + LV_ALIGN_UP(sizeof(lv_draw_task_t), 8);
     new_task->state = LV_DRAW_TASK_STATE_QUEUED;
+#if LV_DRAW_SCHED_TRACE
+    draw_sched_trace_task_created(new_task);
+#endif
 
     /*Find the tail*/
     if(layer->draw_task_head == NULL) {

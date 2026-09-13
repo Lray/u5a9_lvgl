@@ -34,11 +34,16 @@ enable_language(C ASM)
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
 
+option(LV_DRAW_SCHED_TRACE "Collect aggregate LVGL draw scheduler statistics" ON)
+
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
 # Panel bring-up (BSP-derived, not CubeMX-generatable)
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE Src/lcd_panel.c)
+if(LV_DRAW_SCHED_TRACE)
+    target_sources(${CMAKE_PROJECT_NAME} PRIVATE Src/perf/draw_sched_trace.c)
+endif()
 
 # The BSP owns I2C5 initialization; keep its HAL dependency across CubeMX regeneration.
 target_compile_definitions(stm32cubemx INTERFACE HAL_I2C_MODULE_ENABLED)
@@ -76,6 +81,7 @@ target_include_directories(lvgl PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Include
 )
 target_compile_definitions(lvgl PUBLIC STM32U5A9xx USE_HAL_DRIVER)
+target_compile_definitions(lvgl PUBLIC LV_DRAW_SCHED_TRACE=$<BOOL:${LV_DRAW_SCHED_TRACE}>)
 
 # NemaGFX precompiled library (cortex_m33_revC, hard-float)
 set(NEMA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/LVGL/libs/nema_gfx/lib/core/cortex_m33_revC/gcc/libnemagfx-float-abi-hard.a)

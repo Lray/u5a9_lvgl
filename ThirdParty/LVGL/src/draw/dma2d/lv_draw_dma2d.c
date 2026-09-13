@@ -12,6 +12,7 @@
 
 #include "../sw/lv_draw_sw.h"
 #include "../../misc/lv_area_private.h"
+#include "draw_sched_trace.h"
 
 #if !LV_DRAW_DMA2D_ASYNC && LV_USE_DRAW_DMA2D_INTERRUPT
     #warning LV_USE_DRAW_DMA2D_INTERRUPT is 1 but has no effect because LV_USE_OS is LV_OS_NONE
@@ -366,6 +367,9 @@ static int32_t dispatch_cb(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
     t->state = LV_DRAW_TASK_STATE_IN_PROGRESS;
     t->draw_unit = draw_unit;
     draw_dma2d_unit->task_act = t;
+#if LV_DRAW_SCHED_TRACE
+    draw_sched_trace_task_exec(t, DRAW_SCHED_TRACE_RENDERER_DMA2D);
+#endif
 
     if(t->type == LV_DRAW_TASK_TYPE_FILL) {
         lv_draw_fill_dsc_t * dsc = t->draw_dsc;
@@ -377,7 +381,6 @@ static int32_t dispatch_cb(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
             lv_draw_dispatch_request();
             return 1;
         }
-
         void * dest = lv_draw_layer_go_to_xy(layer,
                                              clipped_coords.x1 - layer->buf_area.x1,
                                              clipped_coords.y1 - layer->buf_area.y1);
@@ -407,7 +410,6 @@ static int32_t dispatch_cb(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
             lv_draw_dispatch_request();
             return 1;
         }
-
         void * dest = lv_draw_layer_go_to_xy(layer,
                                              clipped_coords.x1 - layer->buf_area.x1,
                                              clipped_coords.y1 - layer->buf_area.y1);

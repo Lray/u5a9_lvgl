@@ -15,6 +15,7 @@
 #include "../../stdlib/lv_string.h"
 #include "../../core/lv_global.h"
 #include "../../misc/lv_area_private.h"
+#include "draw_sched_trace.h"
 
 #if LV_USE_VECTOR_GRAPHIC && LV_USE_THORVG
     #if LV_USE_THORVG_EXTERNAL
@@ -297,6 +298,9 @@ static int32_t dispatch(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
         taken_cnt++;
         t->state = LV_DRAW_TASK_STATE_IN_PROGRESS;
         thread_dsc->task_act = t;
+#if LV_DRAW_SCHED_TRACE
+        draw_sched_trace_task_exec(t, DRAW_SCHED_TRACE_RENDERER_SW);
+#endif
 
         /*Let the render thread work*/
         if(thread_dsc->inited) lv_thread_sync_signal(&thread_dsc->sync);
@@ -327,6 +331,9 @@ static int32_t dispatch(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
 
     t->state = LV_DRAW_TASK_STATE_IN_PROGRESS;
     draw_sw_unit->task_act = t;
+#if LV_DRAW_SCHED_TRACE
+    draw_sched_trace_task_exec(t, DRAW_SCHED_TRACE_RENDERER_SW);
+#endif
 
     execute_drawing(t);
     draw_sw_unit->task_act->state = LV_DRAW_TASK_STATE_READY;

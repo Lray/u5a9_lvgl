@@ -352,6 +352,11 @@
     #define LV_USE_DRAW_DMA2D_INTERRUPT 1
 #endif
 
+/** Collect aggregate benchmark draw-task routing statistics. */
+#ifndef LV_DRAW_SCHED_TRACE
+    #define LV_DRAW_SCHED_TRACE 1
+#endif
+
 /** Draw using cached OpenGLES textures */
 #define LV_USE_DRAW_OPENGLES 0
 

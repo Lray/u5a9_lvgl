@@ -7,6 +7,7 @@
  *      INCLUDES
  *********************/
 #include "lv_demo_benchmark.h"
+#include "draw_sched_trace.h"
 
 #if LV_USE_DEMO_BENCHMARK
 
@@ -501,6 +502,9 @@ static lv_demo_benchmark_on_end_cb_t on_demo_end_cb;
 void lv_demo_benchmark(void)
 {
     scene_act = 0;
+#if LV_DRAW_SCHED_TRACE
+    draw_sched_trace_reset();
+#endif
 
     lv_obj_t * scr = lv_screen_active();
     lv_obj_remove_style_all(scr);
@@ -517,6 +521,9 @@ void lv_demo_benchmark(void)
     lv_obj_set_style_text_color(title, lv_color_black(), 0);
     lv_obj_set_width(title, lv_pct(100));
 
+#if LV_DRAW_SCHED_TRACE
+    draw_sched_trace_scene_begin(scene_act, scenes[scene_act].name);
+#endif
     load_scene(scene_act);
 
     lv_timer_create(next_scene_timer_cb, scenes[0].scene_time, NULL);
@@ -656,13 +663,23 @@ static void next_scene_timer_cb(lv_timer_t * timer)
 {
     LV_UNUSED(timer);
 
+#if LV_DRAW_SCHED_TRACE
+    draw_sched_trace_scene_end();
+#endif
     scene_act++;
 
+#if LV_DRAW_SCHED_TRACE
+    if(scenes[scene_act].create_cb) draw_sched_trace_scene_begin(scene_act, scenes[scene_act].name);
+#endif
     load_scene(scene_act);
     if(scenes[scene_act].scene_time == 0) {
         lv_demo_benchmark_summary_t summary;
 
         lv_timer_delete(timer);
+#if LV_DRAW_SCHED_TRACE
+        lv_draw_wait_for_finish();
+        draw_sched_trace_dump_csv();
+#endif
         summary_create(&summary);
         /*
          * Don't display the summary if the user sets a callback function
