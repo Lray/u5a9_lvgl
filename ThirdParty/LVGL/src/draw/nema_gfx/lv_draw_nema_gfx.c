@@ -149,6 +149,9 @@ static int32_t nema_gfx_evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * ta
 
     switch(task->type) {
         case LV_DRAW_TASK_TYPE_LAYER: {
+#if LV_DRAW_SCHED_TRACE
+                task->trace_candidate_mask |= DRAW_SCHED_TRACE_CANDIDATE_NEMA_GFX;
+#endif
                 if(task->preference_score > 80) {
                     task->preference_score = 80;
                     task->preferred_draw_unit_id = DRAW_UNIT_ID_NEMA_GFX;
@@ -159,6 +162,9 @@ static int32_t nema_gfx_evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * ta
         case LV_DRAW_TASK_TYPE_TRIANGLE:
         case LV_DRAW_TASK_TYPE_ARC:
         case LV_DRAW_TASK_TYPE_FILL: {
+#if LV_DRAW_SCHED_TRACE
+                task->trace_candidate_mask |= DRAW_SCHED_TRACE_CANDIDATE_NEMA_GFX;
+#endif
                 if(task->preference_score > 80) {
                     task->preference_score = 80;
                     task->preferred_draw_unit_id = DRAW_UNIT_ID_NEMA_GFX;
@@ -169,6 +175,9 @@ static int32_t nema_gfx_evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * ta
         case LV_DRAW_TASK_TYPE_FILL: {
                 lv_draw_fill_dsc_t * draw_fill_dsc = (lv_draw_fill_dsc_t *) task->draw_dsc;
                 if((draw_fill_dsc->grad.dir == (lv_grad_dir_t)LV_GRAD_DIR_NONE)) {
+#if LV_DRAW_SCHED_TRACE
+                    task->trace_candidate_mask |= DRAW_SCHED_TRACE_CANDIDATE_NEMA_GFX;
+#endif
                     if(task->preference_score > 80) {
                         task->preference_score = 80;
                         task->preferred_draw_unit_id = DRAW_UNIT_ID_NEMA_GFX;
@@ -180,6 +189,9 @@ static int32_t nema_gfx_evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * ta
         case LV_DRAW_TASK_TYPE_TRIANGLE: {
                 lv_draw_triangle_dsc_t * draw_triangle_dsc = (lv_draw_triangle_dsc_t *) task->draw_dsc;
                 if((draw_triangle_dsc->grad.dir == (lv_grad_dir_t)LV_GRAD_DIR_NONE)) {
+#if LV_DRAW_SCHED_TRACE
+                    task->trace_candidate_mask |= DRAW_SCHED_TRACE_CANDIDATE_NEMA_GFX;
+#endif
                     if(task->preference_score > 80) {
                         task->preference_score = 80;
                         task->preferred_draw_unit_id = DRAW_UNIT_ID_NEMA_GFX;
@@ -201,6 +213,9 @@ static int32_t nema_gfx_evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * ta
                     break;
 
                 if(draw_image_dsc->blend_mode != LV_BLEND_MODE_SUBTRACTIVE) {
+#if LV_DRAW_SCHED_TRACE
+                    task->trace_candidate_mask |= DRAW_SCHED_TRACE_CANDIDATE_NEMA_GFX;
+#endif
                     if(task->preference_score > 80) {
                         task->preference_score = 80;
                         task->preferred_draw_unit_id = DRAW_UNIT_ID_NEMA_GFX;
@@ -213,6 +228,9 @@ static int32_t nema_gfx_evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * ta
                 lv_draw_label_dsc_t * draw_label_dsc = (lv_draw_label_dsc_t *) task->draw_dsc;
                 lv_font_fmt_txt_dsc_t * fdsc = (lv_font_fmt_txt_dsc_t *)(draw_label_dsc->font->dsc);
                 if(fdsc->bitmap_format != LV_FONT_FMT_TXT_COMPRESSED) {
+#if LV_DRAW_SCHED_TRACE
+                    task->trace_candidate_mask |= DRAW_SCHED_TRACE_CANDIDATE_NEMA_GFX;
+#endif
                     if(task->preference_score > 80) {
                         task->preference_score = 80;
                         task->preferred_draw_unit_id = DRAW_UNIT_ID_NEMA_GFX;
@@ -225,6 +243,9 @@ static int32_t nema_gfx_evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * ta
                 lv_draw_line_dsc_t * draw_line_dsc = (lv_draw_line_dsc_t *) task->draw_dsc;
                 bool is_dashed = (draw_line_dsc->dash_width && draw_line_dsc->dash_gap);
                 if(!is_dashed && !(draw_line_dsc->round_end || draw_line_dsc->round_start)) {
+#if LV_DRAW_SCHED_TRACE
+                    task->trace_candidate_mask |= DRAW_SCHED_TRACE_CANDIDATE_NEMA_GFX;
+#endif
                     if(task->preference_score > 80) {
                         task->preference_score = 80;
                         task->preferred_draw_unit_id = DRAW_UNIT_ID_NEMA_GFX;
@@ -237,6 +258,9 @@ static int32_t nema_gfx_evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * ta
                 const lv_draw_border_dsc_t * draw_dsc = (lv_draw_border_dsc_t *) task->draw_dsc;
                 if((!(draw_dsc->side != (lv_border_side_t)LV_BORDER_SIDE_FULL && draw_dsc->radius > 0)) &&
                    (draw_dsc->radius > draw_dsc->width)) {
+#if LV_DRAW_SCHED_TRACE
+                    task->trace_candidate_mask |= DRAW_SCHED_TRACE_CANDIDATE_NEMA_GFX;
+#endif
                     if(task->preference_score > 80) {
                         task->preference_score = 80;
                         task->preferred_draw_unit_id = DRAW_UNIT_ID_NEMA_GFX;
@@ -280,7 +304,7 @@ static int32_t nema_gfx_dispatch(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
     t->state = LV_DRAW_TASK_STATE_IN_PROGRESS;
     draw_nema_gfx_unit->task_act = t;
 #if LV_DRAW_SCHED_TRACE
-    draw_sched_trace_task_exec(t, DRAW_SCHED_TRACE_RENDERER_NEMA_GFX);
+    draw_sched_trace_task_dispatched(t, DRAW_SCHED_TRACE_DISPATCH_UNIT_NEMA_GFX);
 #endif
 
 #if LV_USE_OS

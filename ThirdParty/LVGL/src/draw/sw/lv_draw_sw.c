@@ -240,6 +240,10 @@ static int32_t evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * task)
             break;
     }
 
+#if LV_DRAW_SCHED_TRACE
+    task->trace_candidate_mask |= DRAW_SCHED_TRACE_CANDIDATE_SW;
+#endif
+
     if(task->preference_score >= 100) {
         task->preference_score = 100;
         task->preferred_draw_unit_id = DRAW_UNIT_ID_SW;
@@ -299,7 +303,7 @@ static int32_t dispatch(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
         t->state = LV_DRAW_TASK_STATE_IN_PROGRESS;
         thread_dsc->task_act = t;
 #if LV_DRAW_SCHED_TRACE
-        draw_sched_trace_task_exec(t, DRAW_SCHED_TRACE_RENDERER_SW);
+        draw_sched_trace_task_dispatched(t, DRAW_SCHED_TRACE_DISPATCH_UNIT_SW);
 #endif
 
         /*Let the render thread work*/
@@ -332,7 +336,7 @@ static int32_t dispatch(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
     t->state = LV_DRAW_TASK_STATE_IN_PROGRESS;
     draw_sw_unit->task_act = t;
 #if LV_DRAW_SCHED_TRACE
-    draw_sched_trace_task_exec(t, DRAW_SCHED_TRACE_RENDERER_SW);
+    draw_sched_trace_task_dispatched(t, DRAW_SCHED_TRACE_DISPATCH_UNIT_SW);
 #endif
 
     execute_drawing(t);

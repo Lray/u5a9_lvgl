@@ -5,6 +5,20 @@
 GUI：LVGL 9.3.0
 配置：SW + STM32 DMA2D + NemaGFX，`LV_USE_PROFILER = 0`，`LV_DRAW_SCHED_TRACE = 1`
 
+## M1.1 instrumentation 状态
+
+M1.1 已将后续 CSV schema 扩展为：
+
+```text
+scene_id,scene_name,task_type,task_subtype,candidate_mask,candidate_units,dispatch_unit,area_bucket,task_count,pixel_count
+```
+
+- `candidate_mask` 是数值位掩码：SW=`1`、DMA2D=`2`、NEMA=`4`；`candidate_units` 仅在最终 dump 时转换为便于阅读的组合字符串。
+- `dispatch_unit` 表示接受并 dispatch 该 task 的 Draw Unit，不表示硬件已经完成像素操作。
+- `area_bucket=0` 严格表示 `accepted task with empty (task->area ∩ task->clip_area)`，应与非空 pixel throughput workload 分开统计，M2 吞吐测试默认排除。
+- FILL 和 IMAGE 增加了 M2 所需 subtype；其余 primitive 的 `task_subtype` 为 `NONE`。
+- M1.1 已在开发板重新运行；新数据与分析独立保存在 [M1.1 draw scheduler eligibility report](M1.1_draw_scheduler_eligibility_report_2026-09-13.md)。本文下方 M1 数字和原始 CSV 保持不变。
+
 ## 数据有效性
 
 - 16 个 benchmark scene 全部存在，CSV 共 197 个聚合项。
@@ -19,7 +33,7 @@ GUI：LVGL 9.3.0
 
 本次共执行 68,058 个 Draw Task，累计有效包围盒面积为 924,990,011 pixels。
 
-| Renderer | Task 数 | Task 占比 | Pixel 数 | Pixel 占比 | 平均 pixels/task |
+| Dispatch unit | Task 数 | Task 占比 | Pixel 数 | Pixel 占比 | 平均 pixels/task |
 |---|---:|---:|---:|---:|---:|
 | DMA2D | 15,305 | 22.49% | 502,795,528 | 54.36% | 32,851.7 |
 | NEMA | 48,339 | 71.03% | 388,235,071 | 41.97% | 8,031.5 |
@@ -60,7 +74,7 @@ NEMA 接收最多任务，DMA2D 处理最多像素，SW 主要承担少数复杂
 
 ### 实际路由
 
-| Task type | Renderer | Task 数 | Pixel 数 | 总 Pixel 占比 |
+| Task type | Dispatch unit | Task 数 | Pixel 数 | 总 Pixel 占比 |
 |---|---|---:|---:|---:|
 | FILL | DMA2D | 12,553 | 483,222,008 | 52.24% |
 | FILL | NEMA | 10,193 | 129,878,920 | 14.04% |
@@ -80,8 +94,8 @@ NEMA 接收最多任务，DMA2D 处理最多像素，SW 主要承担少数复杂
 - NEMA 执行 LABEL、LINE、BORDER、LAYER、旋转 IMAGE 和较复杂 FILL。
 - SW 主要执行 ARC、BOX_SHADOW 和 TRIANGLE。
 - Rotated ARGB images 的 IMAGE 全部路由到 NEMA；普通 RGB/ARGB images 全部路由到 DMA2D。
-- FILL 在 Containers 系列由 DMA2D/NEMA 分担，在 Widgets demo 中三个 renderer 都有实际执行。
-- 当前数据表示 task type/size 层面的实际路由重叠，不表示单个 task 的完整 renderer eligibility mask。
+- FILL 在 Containers 系列由 DMA2D/NEMA 分担，在 Widgets demo 中三个 dispatch unit 都接受过 task。
+- 当前 M1 数据表示 task type/size 层面的实际路由重叠，不表示单个 task 的完整 Draw Unit eligibility mask。
 
 ### 重点 scene
 
@@ -104,7 +118,7 @@ NEMA 接收最多任务，DMA2D 处理最多像素，SW 主要承担少数复杂
 - Widgets demo FILL/NEMA：397
 - Multiple labels FILL/DMA2D：235
 
-这些 task 已被实际 Draw Unit 接受，但不产生有效包围盒像素。M2 不应把它们放入像素吞吐测试，可以单独研究 evaluate、dispatch 和空裁剪 task 的固定成本。
+这些记录严格表示 `accepted task with empty (task->area ∩ task->clip_area)`，不能描述为“该 renderer 实际绘制了 0 pixels”。M2 pixel throughput 测试默认排除这些 task；它们可以单独用于研究 evaluate、dispatch 和空裁剪 task 的固定成本。
 
 ### M2 建议
 
@@ -117,7 +131,9 @@ NEMA 接收最多任务，DMA2D 处理最多像素，SW 主要承担少数复杂
 
 `pixel_count` 是裁剪后包围盒面积，不是曲线、边框或文字真正写入的像素数。它适合表示 task 尺寸和调度模型输入，不应直接当作所有 primitive 的实际 memory-write 数量。另外，各 scene 运行时间固定，因此更快的 scene 会生成更多帧和更多 task；跨 scene 比较总量时应结合 FPS，不能把总 task 数直接视为单帧 workload。
 
-## 最新原始数据
+## 最新 M1 原始数据（保持不变）
+
+以下是已在开发板取得的 M1 原始 CSV。其旧字段名 `renderer` 应按本文术语解释为 `dispatch_unit`；为保持原始数据可追溯性，不修改 header 或任何数据行。
 
 ```csv
 scene_id,scene_name,task_type,renderer,area_bucket,task_count,pixel_count

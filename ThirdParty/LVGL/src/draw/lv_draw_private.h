@@ -83,6 +83,7 @@ struct _lv_draw_task_t {
 
 #if LV_DRAW_SCHED_TRACE
     uint8_t trace_scene_id;
+    uint8_t trace_candidate_mask;
 #endif
 
 };

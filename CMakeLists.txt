@@ -34,7 +34,7 @@ enable_language(C ASM)
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
 
-option(LV_DRAW_SCHED_TRACE "Collect aggregate LVGL draw scheduler statistics" ON)
+option(LV_DRAW_SCHED_TRACE "Collect aggregate LVGL draw scheduler statistics" OFF)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)

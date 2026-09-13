@@ -332,6 +332,10 @@ static int32_t evaluate_cb(lv_draw_unit_t * draw_unit, lv_draw_task_t * task)
             return 0;
     }
 
+#if LV_DRAW_SCHED_TRACE
+    task->trace_candidate_mask |= DRAW_SCHED_TRACE_CANDIDATE_DMA2D;
+#endif
+
     task->preferred_draw_unit_id = DRAW_UNIT_ID_DMA2D;
     task->preference_score = 0;
 
@@ -368,7 +372,7 @@ static int32_t dispatch_cb(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
     t->draw_unit = draw_unit;
     draw_dma2d_unit->task_act = t;
 #if LV_DRAW_SCHED_TRACE
-    draw_sched_trace_task_exec(t, DRAW_SCHED_TRACE_RENDERER_DMA2D);
+    draw_sched_trace_task_dispatched(t, DRAW_SCHED_TRACE_DISPATCH_UNIT_DMA2D);
 #endif
 
     if(t->type == LV_DRAW_TASK_TYPE_FILL) {
